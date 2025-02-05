@@ -15,12 +15,24 @@
 		albumImage: ''
 	};
 
+	// ✅ 프로그레스 바 관련 변수
+	let currentTime = 0;
+	let duration = 0;
+	let progress = 0;
+	let interval = null;
+
+	// ✅ 시간 포맷 변환 (초 → mm:ss)
+	function formatTime(seconds) {
+		const min = Math.floor(seconds / 60);
+		const sec = Math.floor(seconds % 60);
+		return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+	}
+
 	// ✅ 전역 플레이어에서 곡 재생
 	function handlePlayTrack(event) {
 		const { videoId, track } = event.detail;
 
 		if (videoId) {
-			// 트랙 정보 업데이트
 			currentTrack = {
 				name: track.name,
 				artist: track.artists.map((a) => a.name).join(', '),
@@ -38,18 +50,47 @@
 						controls: 0,
 						showinfo: 0,
 						modestbranding: 1,
-						loop: 1,
+						loop: 0,
 						rel: 0
 					},
 					events: {
-						onReady: () => youtubePlayer.playVideo()
+						onReady: () => {
+							youtubePlayer.playVideo();
+							startProgressUpdate();
+						},
+						onStateChange: (event) => {
+							if (event.data === YT.PlayerState.PLAYING) {
+								startProgressUpdate();
+							} else {
+								clearInterval(interval);
+							}
+						}
 					}
 				});
 			} else {
 				youtubePlayer.loadVideoById(videoId);
+				startProgressUpdate();
 			}
 			isPlaying = true;
 		}
+	}
+
+	// ✅ 현재 재생 시간을 업데이트하는 함수
+	function startProgressUpdate() {
+		clearInterval(interval);
+		interval = setInterval(() => {
+			if (youtubePlayer && youtubePlayer.getCurrentTime) {
+				currentTime = youtubePlayer.getCurrentTime();
+				duration = youtubePlayer.getDuration();
+				progress = (currentTime / duration) * 100;
+			}
+		}, 500);
+	}
+
+	// ✅ 사용자가 슬라이더 이동 시 특정 위치로 이동
+	function seekTrack(event) {
+		const newTime = (event.target.value / 100) * duration;
+		youtubePlayer.seekTo(newTime, true);
 	}
 
 	// ✅ 일시정지 / 재생 기능 유지
@@ -97,10 +138,12 @@
 			<li><a href="/favorites">Favorites</a></li>
 			<li><a href="/playlist">Playlist</a></li>
 		</ul>
+
+		<img src="/logo.png" alt="Logo" class="logo-image" />
 	</div>
 
 	<div class="main-content">
-		<h1>this is main</h1>
+		<h1>Play Link!</h1>
 		<slot />
 	</div>
 
@@ -112,16 +155,37 @@
 				<strong>{currentTrack.name}</strong>
 				<p>{currentTrack.artist}</p>
 			</div>
+			<!-- ✅ 현재 재생 시간 / 총 길이 표시 -->
+			<div class="wrap-time">
+				<div class="time-info">
+					<button on:click={togglePause}>
+						{isPlaying ? '⏸️' : '▶️'}
+					</button>
+					<span>{formatTime(currentTime)}</span>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="0.1"
+						bind:value={progress}
+						on:input={seekTrack}
+						class="progress-bar"
+					/>
+					<span>{formatTime(duration)}</span>
+				</div>
+			</div>
 		{/if}
-		<button on:click={togglePause}>
-			{isPlaying ? '⏸️ 일시정지' : '▶️ 재생'}
-		</button>
 	</div>
 
 	<div id="youtube-player"></div>
 </div>
 
 <style>
+	:global(body) {
+		/* this will apply to <body> */
+		margin: 0;
+		padding: 0;
+	}
 	.layout {
 		display: flex;
 		height: 100vh;
@@ -132,10 +196,53 @@
 		width: 250px;
 		background-color: white;
 		color: black;
-		padding: 20px;
+		text-decoration: none;
 		display: flex;
 		flex-direction: column;
 		gap: 20px;
+	}
+
+	.sidebar h2,
+	h3,
+	nav {
+		padding-left: 20px;
+	}
+
+	.logo-image {
+		position: absolute;
+		bottom: 50px; /* 하단에서 20px 위에 고정 */
+		width: 250px;
+	}
+
+	.sidebar:visited {
+		color: black;
+	}
+
+	.sidebar h2 a {
+		color: black;
+		text-decoration: none;
+		font-size: 40px;
+		transition: font-size 0.3s ease;
+	}
+
+	.sidebar h2 a:hover {
+		color: fuchsia;
+		font-size: 45px;
+	}
+
+	li {
+		list-style: none;
+	}
+	li a {
+		font-size: 25px;
+		color: black;
+		text-decoration: none;
+		transition: font-size 0.3s ease;
+	}
+
+	li a:hover {
+		color: deeppink;
+		font-size: 27px;
 	}
 
 	.main-content {
@@ -149,6 +256,9 @@
 	}
 
 	.player {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		position: fixed;
 		bottom: 0;
 		width: 100%;
@@ -156,9 +266,7 @@
 		background-color: #222;
 		color: white;
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0 20px;
+		padding: 0 40px 0 20px;
 		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
 		z-index: 100;
 	}
@@ -174,6 +282,7 @@
 		flex-grow: 1;
 		display: flex;
 		flex-direction: column;
+		max-width: 150px;
 	}
 
 	.player strong {
@@ -190,11 +299,49 @@
 		background: none;
 		border: none;
 		color: white;
-		font-size: 18px;
+		font-size: 40px;
 		cursor: pointer;
 	}
 
 	.player button:hover {
 		color: #1db954;
+	}
+
+	.wrap-time {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 14px;
+		color: #bbb;
+		width: 90%;
+	}
+
+	.time-info {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 14px;
+		color: #bbb;
+		width: 80%;
+	}
+
+	/* ✅ 프로그레스 바 스타일 */
+	.progress-bar {
+		width: 80%;
+		margin: 0 10px;
+		appearance: none;
+		background: #555;
+		height: 5px;
+		border-radius: 5px;
+		cursor: pointer;
+	}
+
+	.progress-bar::-webkit-slider-thumb {
+		appearance: none;
+		background: #1db954;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		cursor: pointer;
 	}
 </style>

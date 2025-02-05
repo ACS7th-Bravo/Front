@@ -103,14 +103,18 @@
 	.search-container {
 		text-align: center;
 		margin-bottom: 20px;
+		display: flex;
+		flex-direction: row;
 	}
 	input {
 		padding: 10px;
-		width: 100%;
+		width: 60%;
+		height: 45px;
 		border: 1px solid #ccc;
 		border-radius: 5px;
 		font-size: 16px;
 		box-sizing: border-box;
+		margin-right: 20px;
 	}
 	.track-list {
 		max-width: 100%;
@@ -135,7 +139,8 @@
 	.button-container {
 		text-align: center;
 	}
-	button {
+	.search-container button {
+		white-space: nowrap;
 		background: #1db954;
 		color: white;
 		border: none;
@@ -144,9 +149,26 @@
 		border-radius: 5px;
 		cursor: pointer;
 		transition: background 0.3s;
-		margin-right: 5px;
+		width: 50px;
+		height: 45px;
 	}
-	button:hover {
-		background: #17a74a;
+	.search-container button:hover {
+		background: palevioletred;
+	}
+
+	.track button {
+		background: #1db954;
+		color: white;
+		border: none;
+		padding: 8px 12px;
+		font-size: 14px;
+		border-radius: 5px;
+		cursor: pointer;
+		transition: background 0.3s;
+		margin-left: 10px;
+	}
+
+	.track button:hover {
+		background-color: hotpink;
 	}
 </style>
