@@ -1,72 +1,40 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
-  const token = "BQBmAKXCN4Ofa06XjzF4z2OCgYHL_r0TcuJGcd5nzUumgmc0PZyIuB4ij3B947SPf9WDDT3Pj63l9oK5h8Dcl-2pj6lpT4efsKBKuxOoHsGWpNfvrYleuK0HMP0hAXKv8ZK7Mx0yIDirHSuwn33oOWJ9WxWpdA2FcQzd4hbXgMc9FCYOOam5KN3z_d9ZDni4n9uVOIH6xEbdeVyAZwpqN_x8ZSaDb9AQU-8nFQbgE7wMYUAetF4HNUXvWJvI5i4F54XvlA7RUKth2XvIArw0QFkiDsh1DxwCCPb-ywcepOcMmY37HQVnKz6ZMCOQIg"; // 🔹 Spotify API 토큰
-  const youtubeApiKey = "AIzaSyAY4kyW7ZyTrZAalwL7BsM2FDZ83Nmg2tM"; // 🔹 YouTube API 키
-
   let searchQuery = "";
   let searchResults: any[] = [];
   let youtubePlayer: any;
   let currentYouTubeVideoId: string | null = null;
-  let isPlaying = false; // 현재 재생 상태 (재생 중인지 여부)
+  let isPlaying = false;
 
-  // ✅ YouTube IFrame API 로드
-  function loadYouTubeAPI() {
-    const script = document.createElement("script");
-    script.src = "https://www.youtube.com/iframe_api";
-    script.async = true;
-    document.body.appendChild(script);
-  }
+  const BACKEND_URL = "http://localhost:3000"; // 백엔드 서버 주소
 
-  // ✅ YouTube 플레이어 초기화
-  function onYouTubeIframeAPIReady() {
-    youtubePlayer = new YT.Player("youtube-player", {
-      height: "0", // 화면 숨기기
-      width: "0",
-      playerVars: {
-        autoplay: 1,
-        controls: 0,
-        showinfo: 0,
-        modestbranding: 1,
-        loop: 1,
-        rel: 0,
-      },
-    });
-  }
-
-  // ✅ Spotify에서 트랙 검색
+  // ✅ 백엔드에서 Spotify 트랙 검색
   async function searchTracks() {
     if (!searchQuery) return;
-    const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=10`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      }
-    });
-
-    const data = await res.json();
-    if (data.tracks) {
-      searchResults = data.tracks.items;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/search?query=${encodeURIComponent(searchQuery)}`);
+      if (!res.ok) throw new Error("Spotify 검색 실패");
+      searchResults = await res.json();
+    } catch (error) {
+      console.error("🚨 검색 오류:", error);
     }
   }
 
-  // ✅ YouTube에서 해당 트랙의 videoId 검색
+  // ✅ 백엔드에서 YouTube videoId 가져오기
   async function getYouTubeVideo(trackName: string, artistName: string) {
-    const searchQuery = `${trackName} ${artistName} official audio`;
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(searchQuery)}&key=${youtubeApiKey}&maxResults=1`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.items.length > 0) {
-      return data.items[0].id.videoId;
-    } else {
-      console.error("❌ 관련 영상이 없습니다.");
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/youtube?track=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}`);
+      if (!res.ok) throw new Error("YouTube 검색 실패");
+      const data = await res.json();
+      return data.videoId || null;
+    } catch (error) {
+      console.error("🚨 YouTube 검색 오류:", error);
       return null;
     }
   }
 
-  // ✅ 트랙 재생 (YouTube에서 검색된 영상 재생)
+  // ✅ 선택한 트랙 재생 (YouTube)
   async function playTrack(track: any) {
     console.log(`🎵 선택한 트랙: ${track.name}`);
     const videoId = await getYouTubeVideo(track.name, track.artists[0].name);
@@ -78,26 +46,18 @@
           height: "0",
           width: "0",
           videoId: videoId,
-          playerVars: {
-            autoplay: 1,
-            controls: 0,
-            showinfo: 0,
-            modestbranding: 1,
-            loop: 1,
-            rel: 0,
-          },
+          playerVars: { autoplay: 1, controls: 0, modestbranding: 1, loop: 1, rel: 0 },
         });
       } else {
         youtubePlayer.loadVideoById(videoId);
       }
-      isPlaying = true; // 현재 재생 중
-      console.log(`🎥 YouTube 오디오 재생 중: ${videoId}`);
+      isPlaying = true;
     } else {
       alert("해당 트랙의 YouTube 영상을 찾을 수 없습니다.");
     }
   }
 
-  // ✅ 일시정지 기능 추가
+  // ✅ 재생/일시정지 토글
   function togglePause() {
     if (youtubePlayer) {
       if (isPlaying) {
@@ -107,8 +67,16 @@
         youtubePlayer.playVideo();
         console.log("▶️ 오디오 재생");
       }
-      isPlaying = !isPlaying; // 상태 토글
+      isPlaying = !isPlaying;
     }
+  }
+
+  // ✅ YouTube API 로드
+  function loadYouTubeAPI() {
+    const script = document.createElement("script");
+    script.src = "https://www.youtube.com/iframe_api";
+    script.async = true;
+    document.body.appendChild(script);
   }
 
   onMount(() => {
@@ -167,16 +135,13 @@
   }
 </style>
 
+<!-- 검색 UI -->
 <div class="search-container">
-  <input
-    type="text"
-    bind:value={searchQuery}
-    placeholder="🎵 검색할 곡 제목을 입력하세요..."
-    on:keydown={(e) => e.key === 'Enter' && searchTracks()}
-  />
+  <input type="text" bind:value={searchQuery} placeholder="🎵 검색할 곡 제목을 입력하세요..." on:keydown={(e) => e.key === 'Enter' && searchTracks()} />
   <button on:click={searchTracks}>검색</button>
 </div>
 
+<!-- 검색 결과 리스트 -->
 {#if searchResults.length > 0}
   <div class="track-list">
     <h3>검색 결과:</h3>
@@ -196,11 +161,9 @@
 <!-- 일시정지 버튼 -->
 {#if currentYouTubeVideoId}
   <div class="button-container">
-    <button on:click={togglePause}>
-      {isPlaying ? "⏸️ 일시정지" : "▶️ 재생"}
-    </button>
+    <button on:click={togglePause}>{isPlaying ? "⏸️ 일시정지" : "▶️ 재생"}</button>
   </div>
 {/if}
 
-<!-- YouTube 오디오 플레이어 -->
+<!-- YouTube 플레이어 -->
 <div id="youtube-player"></div>
