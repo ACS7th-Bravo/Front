@@ -1,31 +1,42 @@
-import { youtubeApiKey } from '$lib/youtubeStore.js';
-import { get } from 'svelte/store';
+const BACKEND_URL = "http://localhost:3000"; // 백엔드 URL 정의
 
-// ✅ YouTube에서 videoId 가져오기
 async function getYouTubeVideo(trackName, artistName) {
-	const searchQueryText = `${trackName} ${artistName} official audio`;
-	const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(searchQueryText)}&key=${get(youtubeApiKey)}&maxResults=1`;
-
-	try {
-		const response = await fetch(url);
-		const data = await response.json();
-		return data.items?.[0]?.id?.videoId || null;
-	} catch (error) {
-		console.error('❌ YouTube 검색 요청 실패:', error);
-		return null;
-	}
+  try {
+    const url = `${BACKEND_URL}/api/youtube/search?track=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}`;
+    console.log(`🔍 YouTube API 요청: ${url}`);
+    
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`YouTube 검색 실패! HTTP 상태 코드: ${res.status}`);
+    
+    const data = await res.json();
+    console.log(`✅ YouTube API 응답:`, data);
+    
+    return data.videoId || null;
+  } catch (error) {
+    console.error('❌ YouTube 검색 오류:', error);
+    return null;
+  }
 }
 
-// ✅ 트랙 재생 함수
 export async function playTrack(track, index) {
-	const videoId = await getYouTubeVideo(track.name, track.artists[0].name);
-	if (videoId) {
-		window.dispatchEvent(
-			new CustomEvent('playTrack', {
-				detail: { videoId, track, index }
-			})
-		);
-	} else {
-		alert('❌ YouTube에서 영상을 찾을 수 없습니다.');
-	}
+  // 로그인이 되어 있지 않으면 재생 기능을 막음.
+  if (!localStorage.getItem("jwt_token")) {
+    alert("로그인 후 음악을 재생할 수 있습니다.");
+    return;
+  }
+  
+  console.log(`🎵 재생 요청: ${track.name} - ${track.artists[0].name}`);
+  
+  const videoId = await getYouTubeVideo(track.name, track.artists[0].name);
+  console.log(`▶️ 찾은 YouTube Video ID:`, videoId);
+  
+  if (videoId) {
+    window.dispatchEvent(
+      new CustomEvent('playTrack', {
+        detail: { videoId, track, index }
+      })
+    );
+  } else {
+    alert('❌ YouTube에서 영상을 찾을 수 없습니다.');
+  }
 }
