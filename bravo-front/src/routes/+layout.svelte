@@ -2,11 +2,15 @@
 	import { onMount } from 'svelte';
 	import { getAccessToken } from '$lib/spotify.js';
 	import { youtubeApiKey } from '$lib/youtubeStore.js';
+	import { searchResults } from '$lib/searchStore.js'; // ✅ 추가
+	import { playTrack } from '$lib/trackPlayer.js';
+
 	import { get } from 'svelte/store';
 
 	let isPlaying = false;
 	let youtubePlayer;
 	let currentYouTubeVideoId = null;
+	let currentTrackIndex = -1; // ✅ 현재 재생 중인 곡의 인덱스 추가
 
 	// ✅ 현재 재생 중인 트랙 정보
 	let currentTrack = {
@@ -30,7 +34,7 @@
 
 	// ✅ 전역 플레이어에서 곡 재생
 	function handlePlayTrack(event) {
-		const { videoId, track } = event.detail;
+		const { videoId, track, index } = event.detail;
 
 		if (videoId) {
 			currentTrack = {
@@ -40,6 +44,8 @@
 			};
 
 			currentYouTubeVideoId = videoId;
+			currentTrackIndex = index; // ✅ 현재 재생 중인 트랙 인덱스 저장
+
 			if (!youtubePlayer) {
 				youtubePlayer = new YT.Player('youtube-player', {
 					height: '0',
@@ -59,9 +65,20 @@
 							startProgressUpdate();
 						},
 						onStateChange: (event) => {
-							if (event.data === YT.PlayerState.PLAYING) {
+							console.log('🎬 YouTube 플레이어 상태 변경:', event.data);
+
+							if (event.data === YT.PlayerState.ENDED) {
+								console.log('✅ 곡이 끝남! 다음 곡 자동 재생 시작...');
+								playNextTrack();
+							} else if (event.data === YT.PlayerState.PLAYING) {
+								console.log('▶️ 곡 재생 중...');
 								startProgressUpdate();
+							} else if (event.data === YT.PlayerState.BUFFERING) {
+								console.log('⏳ 버퍼링 중...');
+							} else if (event.data === YT.PlayerState.PAUSED) {
+								console.log('⏸️ 곡 일시 정지됨');
 							} else {
+								console.log('⚠️ 알 수 없는 상태 코드:', event.data);
 								clearInterval(interval);
 							}
 						}
@@ -72,6 +89,25 @@
 				startProgressUpdate();
 			}
 			isPlaying = true;
+		}
+	}
+
+	// ✅ 다음 곡 자동 재생 함수
+	async function playNextTrack() {
+		console.log('⏭️ playNextTrack() 호출됨!');
+
+		const tracks = get(searchResults);
+		console.log('🔍 현재 검색된 트랙 목록:', tracks);
+		console.log('🎵 현재 트랙 인덱스:', currentTrackIndex);
+
+		if (currentTrackIndex < tracks.length - 1) {
+			const nextTrack = tracks[currentTrackIndex + 1];
+			console.log('✅ 다음 재생할 트랙:', nextTrack);
+
+			// ✅ 기존의 playTrack() 함수를 호출하여 자동 재생
+			playTrack(nextTrack, currentTrackIndex + 1);
+		} else {
+			console.log('⏹️ 더 이상 재생할 트랙이 없습니다.');
 		}
 	}
 
@@ -185,6 +221,15 @@
 		/* this will apply to <body> */
 		margin: 0;
 		padding: 0;
+	}
+
+	*::-webkit-scrollbar {
+		display: none;
+	}
+
+	* {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
 	}
 	.layout {
 		display: flex;

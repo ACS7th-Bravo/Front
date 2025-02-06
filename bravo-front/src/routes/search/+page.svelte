@@ -4,6 +4,7 @@
 	import { youtubeApiKey } from '$lib/youtubeStore.js';
 	import { searchQuery, searchResults } from '$lib/searchStore.js';
 	import { get } from 'svelte/store';
+	import { playTrack } from '$lib/trackPlayer.js';
 
 	let spotifyToken = '';
 	let tokenExpiresAt = 0;
@@ -44,6 +45,7 @@
 	// ✅ YouTube에서 videoId 가져오기
 	async function getYouTubeVideo(trackName: string, artistName: string) {
 		const searchQueryText = `${trackName} ${artistName} official audio`;
+		console.log('검색어는: ', searchQueryText);
 		const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(
 			searchQueryText
 		)}&key=${get(youtubeApiKey)}&maxResults=1`;
@@ -55,20 +57,6 @@
 		} catch (error) {
 			console.error('❌ YouTube 검색 요청 실패:', error);
 			return null;
-		}
-	}
-
-	// ✅ 트랙 재생 시 `+layout.svelte`로 이벤트 전송
-	async function playTrack(track) {
-		const videoId = await getYouTubeVideo(track.name, track.artists[0].name);
-		if (videoId) {
-			window.dispatchEvent(
-				new CustomEvent('playTrack', {
-					detail: { videoId, track }
-				})
-			);
-		} else {
-			alert('❌ YouTube에서 영상을 찾을 수 없습니다.');
 		}
 	}
 </script>
@@ -86,14 +74,14 @@
 {#if $searchResults.length > 0}
 	<div class="track-list">
 		<h3>검색 결과:</h3>
-		{#each $searchResults as track}
+		{#each $searchResults as track, index}
 			<div class="track">
 				<img src={track.album.images[0]?.url} alt="Album Cover" />
 				<div>
 					<strong>{track.name}</strong>
 					<p>{track.artists.map((artist: any) => artist.name).join(', ')}</p>
 				</div>
-				<button on:click={() => playTrack(track)}>▶️ 재생</button>
+				<button on:click={() => playTrack(track, index)}>▶️ 재생</button>
 			</div>
 		{/each}
 	</div>
