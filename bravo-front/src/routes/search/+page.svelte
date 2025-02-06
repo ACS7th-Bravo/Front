@@ -6,14 +6,64 @@
   let youtubePlayer: any;
   let currentYouTubeVideoId: string | null = null;
   let isPlaying = false;
+  let isLoggedIn = false;
+  let accessToken = "";
 
   const BACKEND_URL = "http://localhost:3000"; // 백엔드 서버 주소
 
-  // ✅ 백엔드에서 Spotify 트랙 검색
+  // ✅ 로그인 상태 확인
+  async function checkLoginStatus() {
+    const token = localStorage.getItem("jwt_token");
+    if (!token) {
+      isLoggedIn = false;
+      return;
+    }
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/verify-token`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (data.valid) {
+        isLoggedIn = true;
+        accessToken = token;
+      } else {
+        isLoggedIn = false;
+        localStorage.removeItem("jwt_token");
+      }
+    } catch (error) {
+      console.error("🚨 로그인 상태 확인 오류:", error);
+      isLoggedIn = false;
+      localStorage.removeItem("jwt_token");
+    }
+  }
+
+  // ✅ Google 로그인 버튼 클릭 시
+  function login() {
+    window.location.href = `${BACKEND_URL}/api/google-login`; // 백엔드 `/api/google-login` 호출
+  }
+
+  // ✅ 로그아웃 (JWT 삭제)
+  function logout() {
+    localStorage.removeItem("jwt_token");
+    isLoggedIn = false;
+    accessToken = "";
+    alert("🚪 로그아웃 되었습니다.");
+  }
+
+  // ✅ Spotify 트랙 검색 (로그인한 경우만 실행)
   async function searchTracks() {
+    if (!isLoggedIn) {
+      alert("🎵 검색하려면 먼저 로그인하세요!");
+      return;
+    }
+
     if (!searchQuery) return;
     try {
-      const res = await fetch(`${BACKEND_URL}/api/search?query=${encodeURIComponent(searchQuery)}`);
+      const res = await fetch(`${BACKEND_URL}/api/search?query=${encodeURIComponent(searchQuery)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       if (!res.ok) throw new Error("Spotify 검색 실패");
       searchResults = await res.json();
     } catch (error) {
@@ -21,7 +71,7 @@
     }
   }
 
-  // ✅ 백엔드에서 YouTube videoId 가져오기
+  // ✅ YouTube에서 해당 트랙의 videoId 검색
   async function getYouTubeVideo(trackName: string, artistName: string) {
     try {
       const res = await fetch(`${BACKEND_URL}/api/youtube?track=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}`);
@@ -81,6 +131,7 @@
 
   onMount(() => {
     loadYouTubeAPI();
+    checkLoginStatus(); // ✅ 로그인 상태 확인
   });
 </script>
 
@@ -134,6 +185,15 @@
     background: #17a74a;
   }
 </style>
+
+<!-- 로그인 / 로그아웃 버튼 -->
+<div class="button-container">
+  {#if isLoggedIn}
+    <button on:click={logout}>🚪 로그아웃</button>
+  {:else}
+    <button on:click={login}>🎵 Google 로그인</button>
+  {/if}
+</div>
 
 <!-- 검색 UI -->
 <div class="search-container">
