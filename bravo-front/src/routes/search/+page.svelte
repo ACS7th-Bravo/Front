@@ -1,62 +1,24 @@
+<!-- /bravo-front/src/routes/search/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getAccessToken } from '$lib/spotify.js';
-	import { youtubeApiKey } from '$lib/youtubeStore.js';
+	// 기존 getAccessToken() 호출 제거 (토큰 관리는 백엔드에서 함)
 	import { searchQuery, searchResults } from '$lib/searchStore.js';
 	import { get } from 'svelte/store';
 	import { playTrack } from '$lib/trackPlayer.js';
 
-	let spotifyToken = '';
-	let tokenExpiresAt = 0;
-
-	// ✅ Spotify 토큰 갱신
-	async function updateSpotifyToken() {
-		try {
-			spotifyToken = await getAccessToken();
-			tokenExpiresAt = Date.now() + 3600 * 1000;
-		} catch (error) {
-			console.error('❌ Spotify API 토큰 갱신 실패:', error);
-		}
-	}
-	onMount(updateSpotifyToken);
-
-	// ✅ Spotify에서 트랙 검색
+	// ✅ Spotify에서 트랙 검색 (백엔드 호출)
 	async function searchTracks() {
 		if (!get(searchQuery)) return;
 
-		if (Date.now() >= tokenExpiresAt) {
-			await updateSpotifyToken();
-		}
-
 		try {
 			const res = await fetch(
-				`https://api.spotify.com/v1/search?q=${encodeURIComponent(get(searchQuery))}&type=track&limit=20`,
-				{ headers: { Authorization: `Bearer ${spotifyToken}` } }
+				`http://localhost:3001/api/spotify/search?q=${encodeURIComponent(get(searchQuery))}`
 			);
-
 			if (!res.ok) throw new Error(`HTTP 오류! 상태 코드: ${res.status}`);
 			const data = await res.json();
-			searchResults.set(data.tracks?.items || []);
+			searchResults.set(data);
 		} catch (error) {
 			console.error('❌ Spotify 검색 요청 실패:', error);
-		}
-	}
-
-	// ✅ YouTube에서 videoId 가져오기
-	async function getYouTubeVideo(trackName: string, artistName: string) {
-		const searchQueryText = `${trackName} ${artistName} official audio`;
-		console.log('검색어는: ', searchQueryText);
-		const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(
-			searchQueryText
-		)}&key=${get(youtubeApiKey)}&maxResults=1`;
-
-		try {
-			const response = await fetch(url);
-			const data = await response.json();
-			return data.items?.[0]?.id?.videoId || null;
-		} catch (error) {
-			console.error('❌ YouTube 검색 요청 실패:', error);
-			return null;
 		}
 	}
 </script>

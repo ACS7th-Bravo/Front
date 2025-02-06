@@ -1,15 +1,18 @@
-import { youtubeApiKey } from '$lib/youtubeStore.js';
+// /bravo-front/src/lib/trackPlayer.js
 import { get } from 'svelte/store';
 
-// ✅ YouTube에서 videoId 가져오기
+// ✅ YouTube에서 videoId 가져오기 (백엔드 호출)
 async function getYouTubeVideo(trackName, artistName) {
-	const searchQueryText = `${trackName} ${artistName} official audio`;
-	const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(searchQueryText)}&key=${get(youtubeApiKey)}&maxResults=1`;
+	const url = `http://localhost:3001/api/youtube/search?trackName=${encodeURIComponent(
+		trackName
+	)}&artistName=${encodeURIComponent(artistName)}`;
+	console.log('검색한 키워드: ', `${trackName} ${artistName} official audio`);
+	console.log('백엔드 유튜브 검색 url은: ', url);
 
 	try {
 		const response = await fetch(url);
 		const data = await response.json();
-		return data.items?.[0]?.id?.videoId || null;
+		return data.videoId || null;
 	} catch (error) {
 		console.error('❌ YouTube 검색 요청 실패:', error);
 		return null;

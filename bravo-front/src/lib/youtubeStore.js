@@ -1,6 +1,7 @@
+// /bravo-front/src/lib/youtubeStore.js
 import { writable, get } from 'svelte/store';
 
-// ✅ YouTube API 키 목록
+// ✅ YouTube API 키 목록 (백엔드로 이전할 예정이지만, 프론트엔드에서 참조할 필요가 있다면 유지)
 export const youtubeApiKeys = [
 	'AIzaSyAwcUsgAODlJAndOnlnYKqbGGtnjS_L61E',
 	'AIzaSyDjf1hY6e6IOQYz92SErP4QWWD_dLWU6Mg',
@@ -13,18 +14,12 @@ export const youtubeApiKeys = [
 export const currentApiKeyIndex = writable(0);
 export const youtubeApiKey = writable(youtubeApiKeys[0]);
 
-// ✅ 2분마다 API 키 변경
+// ✅ 2분마다 API 키 변경 (백엔드에서 관리하므로 프론트엔드에서는 사용하지 않아도 됨)
 function rotateApiKey() {
-	// 🔹 currentApiKeyIndex 값을 업데이트
 	currentApiKeyIndex.update((n) => (n + 1) % youtubeApiKeys.length);
-
-	// 🔹 즉시 get()으로 업데이트된 값을 가져옴
 	const newIndex = get(currentApiKeyIndex);
 	youtubeApiKey.set(youtubeApiKeys[newIndex]);
-
-	// ✅ `$번째` 형식으로 로그 출력
 	console.log(`🔄 ${newIndex + 1}번째 YouTube API 키 변경됨: ${youtubeApiKeys[newIndex]}`);
 }
 
-// ✅ 2분마다 실행
 setInterval(rotateApiKey, 2 * 60 * 1000);

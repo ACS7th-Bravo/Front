@@ -1,11 +1,10 @@
+<!-- /bravo-front/src/routes/+layout.svelte -->
 <script>
 	import { onMount } from 'svelte';
-	import { getAccessToken } from '$lib/spotify.js';
+	// 백엔드에서 Spotify 토큰 관리를 하므로 getAccessToken 호출 제거
 	import { youtubeApiKey } from '$lib/youtubeStore.js';
 	import { searchResults } from '$lib/searchStore.js'; // ✅ 추가
 	import { playTrack } from '$lib/trackPlayer.js';
-
-	import { get } from 'svelte/store';
 
 	let isPlaying = false;
 	let youtubePlayer;
@@ -96,7 +95,7 @@
 	async function playNextTrack() {
 		console.log('⏭️ playNextTrack() 호출됨!');
 
-		const tracks = get(searchResults);
+		const tracks = $searchResults;
 		console.log('🔍 현재 검색된 트랙 목록:', tracks);
 		console.log('🎵 현재 트랙 인덱스:', currentTrackIndex);
 
@@ -149,10 +148,9 @@
 		document.body.appendChild(script);
 	}
 
-	// ✅ Spotify 토큰 검사 및 YouTube API 로드
-	onMount(async () => {
-		console.log('🚀 앱 시작 - Spotify 토큰 검사 중...');
-		await getAccessToken();
+	// ✅ 앱 시작: Spotify 토큰 체크 제거, YouTube API 로드, 이벤트 리스너 등록
+	onMount(() => {
+		console.log('🚀 앱 시작...');
 		loadYouTubeAPI();
 		window.addEventListener('playTrack', handlePlayTrack);
 	});
