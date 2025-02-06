@@ -11,65 +11,60 @@
 
   const BACKEND_URL = "http://localhost:3000"; // 백엔드 서버 주소
 
+
+      // ✅ URL에서 토큰 가져오기
+      onMount(() => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("token");
+
+      if (token) {
+          localStorage.setItem("jwt_token", token);
+          window.history.replaceState({}, document.title, "/");
+      }
+      checkLoginStatus();
+  });
+
   // ✅ 로그인 상태 확인
   async function checkLoginStatus() {
-    const token = localStorage.getItem("jwt_token");
-    if (!token) {
-      isLoggedIn = false;
-      return;
-    }
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/verify-token`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-
-      if (data.valid) {
-        isLoggedIn = true;
-        accessToken = token;
-      } else {
-        isLoggedIn = false;
-        localStorage.removeItem("jwt_token");
+      const token = localStorage.getItem("jwt_token");
+      if (!token) {
+          isLoggedIn = false;
+          return;
       }
-    } catch (error) {
-      console.error("🚨 로그인 상태 확인 오류:", error);
-      isLoggedIn = false;
-      localStorage.removeItem("jwt_token");
-    }
+
+      try {
+          const res = await fetch(`${BACKEND_URL}/api/verify-token`, {
+              headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          isLoggedIn = data.valid;
+          accessToken = data.valid ? token : "";
+      } catch (error) {
+          console.error("🚨 로그인 상태 확인 오류:", error);
+          isLoggedIn = false;
+          localStorage.removeItem("jwt_token");
+      }
   }
 
-  // ✅ Google 로그인 버튼 클릭 시
-  function login() {
-    window.location.href = `${BACKEND_URL}/api/google-login`; // 백엔드 `/api/google-login` 호출
-  }
 
-  // ✅ 로그아웃 (JWT 삭제)
-  function logout() {
-    localStorage.removeItem("jwt_token");
-    isLoggedIn = false;
-    accessToken = "";
-    alert("🚪 로그아웃 되었습니다.");
-  }
+  // ✅ 로그인 & 로그아웃
+  function login() { window.location.href = `${BACKEND_URL}/api/google-login`; }
+  function logout() { localStorage.removeItem("jwt_token"); isLoggedIn = false; accessToken = ""; alert("로그아웃 완료"); }
 
-  // ✅ Spotify 트랙 검색 (로그인한 경우만 실행)
+  // ✅ 검색
   async function searchTracks() {
-    if (!isLoggedIn) {
-      alert("🎵 검색하려면 먼저 로그인하세요!");
-      return;
-    }
+      if (!isLoggedIn) { alert("로그인하세요!"); return; }
+      if (!searchQuery) return;
 
-    if (!searchQuery) return;
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/search?query=${encodeURIComponent(searchQuery)}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) throw new Error("Spotify 검색 실패");
-      searchResults = await res.json();
-    } catch (error) {
-      console.error("🚨 검색 오류:", error);
-    }
+      try {
+          const res = await fetch(`${BACKEND_URL}/api/search?query=${encodeURIComponent(searchQuery)}`, {
+              headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          searchResults = await res.json();
+      } catch (error) { console.error("🚨 검색 오류:", error); }
   }
+
+
 
   // ✅ YouTube에서 해당 트랙의 videoId 검색
   async function getYouTubeVideo(trackName: string, artistName: string) {

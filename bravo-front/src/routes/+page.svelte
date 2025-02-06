@@ -10,20 +10,20 @@
     let accessToken = "";
   
     const BACKEND_URL = "http://localhost:3000"; // 백엔드 서버 주소
-
-
+  
+  
         // ✅ URL에서 토큰 가져오기
         onMount(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get("token");
-
+  
         if (token) {
             localStorage.setItem("jwt_token", token);
             window.history.replaceState({}, document.title, "/");
         }
         checkLoginStatus();
     });
-
+  
     // ✅ 로그인 상태 확인
     async function checkLoginStatus() {
         const token = localStorage.getItem("jwt_token");
@@ -31,7 +31,7 @@
             isLoggedIn = false;
             return;
         }
-
+  
         try {
             const res = await fetch(`${BACKEND_URL}/api/verify-token`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -50,12 +50,12 @@
     // ✅ 로그인 & 로그아웃
     function login() { window.location.href = `${BACKEND_URL}/api/google-login`; }
     function logout() { localStorage.removeItem("jwt_token"); isLoggedIn = false; accessToken = ""; alert("로그아웃 완료"); }
-
+  
     // ✅ 검색
     async function searchTracks() {
         if (!isLoggedIn) { alert("로그인하세요!"); return; }
         if (!searchQuery) return;
-
+  
         try {
             const res = await fetch(`${BACKEND_URL}/api/search?query=${encodeURIComponent(searchQuery)}`, {
                 headers: { Authorization: `Bearer ${accessToken}` },
@@ -64,7 +64,7 @@
         } catch (error) { console.error("🚨 검색 오류:", error); }
     }
   
-
+  
   
     // ✅ YouTube에서 해당 트랙의 videoId 검색
     async function getYouTubeVideo(trackName: string, artistName: string) {
