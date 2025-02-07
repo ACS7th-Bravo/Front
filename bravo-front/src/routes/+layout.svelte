@@ -5,47 +5,56 @@
   
 	let isLoggedIn = false;
   
-	// 로그아웃 함수: localStorage에서 JWT 토큰을 삭제 후 홈으로 리다이렉트
+	// 로그아웃 함수
 	function logout() {
 	  localStorage.removeItem("jwt_token");
 	  isLoggedIn = false;
 	  window.location.href = "/";
 	}
   
-	// onMount 시 URL에서 토큰 추출, localStorage에 저장 및 로그인 상태 업데이트
+	// onMount 시 URL에서 토큰 추출, localStorage 저장, 로그인 상태 업데이트
 	onMount(() => {
 	  const urlParams = new URLSearchParams(window.location.search);
 	  const token = urlParams.get("token");
 	  if (token) {
-		// 토큰이 URL에 있으면 localStorage에 저장
 		localStorage.setItem("jwt_token", token);
 		isLoggedIn = true;
-		// URL에서 토큰 제거 (페이지 리로드 시 쿼리 파라미터가 남지 않도록)
+		// 토큰을 URL에서 제거하여 보안 강화
 		window.history.replaceState({}, document.title, "/");
 	  } else {
-		// localStorage에서 토큰이 있으면 로그인 상태 처리
 		isLoggedIn = !!localStorage.getItem("jwt_token");
 	  }
+  
+	  // 5초마다 로그인 상태와 JWT 토큰(있는 경우)을 콘솔에 출력
+	  setInterval(() => {
+		console.log("로그인 상태:", isLoggedIn, "JWT 토큰:", localStorage.getItem("jwt_token"));
+	  }, 5000);
   
 	  loadYouTubeAPI();
 	  window.addEventListener('playTrack', handlePlayTrack);
 	});
   
-	// --- 기존 YouTube 플레이어 관련 코드 및 함수 (생략) ---
+	// 기존 YouTube 플레이어 관련 코드 (생략)
 	let isPlaying = false;
 	let youtubePlayer;
 	let currentYouTubeVideoId = null;
 	let currentTrackIndex = -1;
-	let currentTrack = { name: '', artist: '', albumImage: '' };
+	let currentTrack = {
+	  name: '',
+	  artist: '',
+	  albumImage: ''
+	};
 	let currentTime = 0;
 	let duration = 0;
 	let progress = 0;
 	let interval = null;
+  
 	function formatTime(seconds) {
 	  const min = Math.floor(seconds / 60);
 	  const sec = Math.floor(seconds % 60);
 	  return `${min}:${sec < 10 ? '0' : ''}${sec}`;
 	}
+  
 	function handlePlayTrack(event) {
 	  const { videoId, track, index } = event.detail;
 	  if (videoId) {
@@ -85,7 +94,6 @@
 				} else if (event.data === YT.PlayerState.PAUSED) {
 				  console.log('⏸️ 곡 일시 정지됨');
 				} else {
-				  console.log('⚠️ 알 수 없는 상태 코드:', event.data);
 				  clearInterval(interval);
 				}
 			  }
@@ -98,6 +106,7 @@
 		isPlaying = true;
 	  }
 	}
+  
 	async function playNextTrack() {
 	  const tracks = $searchResults;
 	  if (currentTrackIndex < tracks.length - 1) {
@@ -105,6 +114,7 @@
 		playTrack(nextTrack, currentTrackIndex + 1);
 	  }
 	}
+  
 	function startProgressUpdate() {
 	  clearInterval(interval);
 	  interval = setInterval(() => {
@@ -115,16 +125,19 @@
 		}
 	  }, 500);
 	}
+  
 	function seekTrack(event) {
 	  const newTime = (event.target.value / 100) * duration;
 	  youtubePlayer.seekTo(newTime, true);
 	}
+  
 	function togglePause() {
 	  if (youtubePlayer) {
 		isPlaying ? youtubePlayer.pauseVideo() : youtubePlayer.playVideo();
 		isPlaying = !isPlaying;
 	  }
 	}
+  
 	function loadYouTubeAPI() {
 	  const script = document.createElement('script');
 	  script.src = 'https://www.youtube.com/iframe_api';
@@ -133,7 +146,7 @@
 	}
   </script>
   
-  <!-- 헤더: 로그인/로그아웃 버튼 영역 -->
+  <!-- 헤더 영역 -->
   <div class="header">
 	{#if isLoggedIn}
 	  <button class="logout-btn" on:click={logout}>로그아웃</button>

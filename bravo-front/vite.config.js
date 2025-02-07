@@ -12,7 +12,7 @@ export default defineConfig({
       },
     },
     allowedHosts: [
-      'ecd6-175-113-108-17.ngrok-free.app'
+      'popular-incredibly-burro.ngrok-free.app'
     ]
   },
 });
