@@ -1,31 +1,55 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
 	import { searchResults } from '$lib/searchStore.js';
 	import { playTrack } from '$lib/trackPlayer.js';
+	import * as jwt_decode from 'jwt-decode';
   
+	// 로그인 상태 및 사용자 정보 변수
 	let isLoggedIn = false;
+	let user = { name: '', picture: '' };
   
-	// 로그아웃 함수
+	// 로그아웃 함수: localStorage에서 토큰 삭제 후 홈으로 리다이렉트
 	function logout() {
 	  localStorage.removeItem("jwt_token");
 	  isLoggedIn = false;
+	  user = { name: '', picture: '' };
 	  window.location.href = "/";
 	}
   
-	// onMount 시 URL에서 토큰 추출, localStorage 저장, 로그인 상태 업데이트
+	// onMount: URL에서 토큰 추출, localStorage 저장, 로그인 상태 및 사용자 정보 업데이트
 	onMount(() => {
 	  const urlParams = new URLSearchParams(window.location.search);
-	  const token = urlParams.get("token");
-	  if (token) {
-		localStorage.setItem("jwt_token", token);
+	  const tokenFromUrl = urlParams.get("token");
+	  if (tokenFromUrl) {
+		localStorage.setItem("jwt_token", tokenFromUrl);
 		isLoggedIn = true;
-		// 토큰을 URL에서 제거하여 보안 강화
+		try {
+		  // 타입 단언을 통해 jwt_decode를 함수로 취급합니다.
+		  const decoded: any = (jwt_decode as unknown as (token: string) => any)(tokenFromUrl);
+		  user.name = decoded.name;
+		  user.picture = decoded.picture;
+		} catch (error) {
+		  console.error("JWT 디코딩 오류:", error);
+		}
+		// URL에서 토큰 제거
 		window.history.replaceState({}, document.title, "/");
 	  } else {
-		isLoggedIn = !!localStorage.getItem("jwt_token");
+		const savedToken = localStorage.getItem("jwt_token");
+		if (savedToken) {
+		  isLoggedIn = true;
+		  try {
+			const decoded: any = (jwt_decode as unknown as (token: string) => any)(savedToken);
+			user.name = decoded.name;
+			user.picture = decoded.picture;
+		  } catch (error) {
+			console.error("JWT 디코딩 오류:", error);
+		  }
+		} else {
+		  isLoggedIn = false;
+		}
 	  }
   
-	  // 5초마다 로그인 상태와 JWT 토큰(있는 경우)을 콘솔에 출력
+	  // 5초마다 로그인 상태와 JWT 토큰(있는 경우)을 콘솔에 출력 (디버깅용)
 	  setInterval(() => {
 		console.log("로그인 상태:", isLoggedIn, "JWT 토큰:", localStorage.getItem("jwt_token"));
 	  }, 5000);
@@ -34,7 +58,7 @@
 	  window.addEventListener('playTrack', handlePlayTrack);
 	});
   
-	// 기존 YouTube 플레이어 관련 코드 (생략)
+	// 기존 YouTube 플레이어 관련 코드
 	let isPlaying = false;
 	let youtubePlayer;
 	let currentYouTubeVideoId = null;
@@ -146,12 +170,18 @@
 	}
   </script>
   
-  <!-- 헤더 영역 -->
+  <!-- 헤더 영역: 로그인 상태에 따라 사용자 정보와 로그인/로그아웃 버튼 표시 -->
   <div class="header">
 	{#if isLoggedIn}
-	  <button class="logout-btn" on:click={logout}>로그아웃</button>
+	  <div class="user-info">
+		<img src={user.picture} alt="Profile Picture" class="profile-pic" />
+		<span class="user-name">{user.name}</span>
+		<button class="logout-btn" on:click={logout}>로그아웃</button>
+	  </div>
 	{:else}
-	  <button class="login-btn" on:click={() => window.location.href = "http://localhost:3000/api/google/google-login"}>구글 로그인</button>
+	<button class="login-btn" on:click={() => window.location.href = "http://localhost:3000/api/google/google-login?prompt=select_account"}>
+		구글 로그인
+	  </button>
 	{/if}
   </div>
   
@@ -232,6 +262,27 @@
 	  right: 0;
 	  padding: 10px;
 	  z-index: 200;
+	  display: flex;
+	  align-items: center;
+	  gap: 10px;
+	}
+  
+	.user-info {
+	  display: flex;
+	  align-items: center;
+	  gap: 10px;
+	}
+  
+	.profile-pic {
+	  width: 40px;
+	  height: 40px;
+	  border-radius: 50%;
+	}
+  
+	.user-name {
+	  color: white;
+	  font-size: 16px;
+	  font-weight: bold;
 	}
   
 	.login-btn,

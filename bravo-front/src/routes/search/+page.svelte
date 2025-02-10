@@ -1,10 +1,12 @@
-<!-- /bravo-front/src/routes/search/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	// 기존 getAccessToken() 호출 제거 (토큰 관리는 백엔드에서 함)
 	import { searchQuery, searchResults } from '$lib/searchStore.js';
 	import { get } from 'svelte/store';
 	import { playTrack } from '$lib/trackPlayer.js';
+	import { getLyrics } from '$lib/lyrics.js'; // ✅ 가사 API 추가
+
+	let currentTrack = null;
+	let lyrics = "가사를 불러오는 중...";
 
 	// ✅ Spotify에서 트랙 검색 (백엔드 호출)
 	async function searchTracks() {
@@ -21,6 +23,20 @@
 			console.error('❌ Spotify 검색 요청 실패:', error);
 		}
 	}
+
+	// ✅ 곡을 선택하면 재생 + 가사 가져오기
+	async function selectTrack(track, index) {
+		currentTrack = track;
+		lyrics = "가사를 불러오는 중...";
+
+		// YouTube에서 곡 재생
+		playTrack(track, index);
+
+		// Musixmatch에서 가사 가져오기
+		const fetchedLyrics = await getLyrics(track.name, track.artists.map(a => a.name).join(', '));
+		lyrics = fetchedLyrics ? fetchedLyrics : "가사를 찾을 수 없습니다.";
+	}
+
 </script>
 
 <div class="search-container">
@@ -43,9 +59,17 @@
 					<strong>{track.name}</strong>
 					<p>{track.artists.map((artist: any) => artist.name).join(', ')}</p>
 				</div>
-				<button on:click={() => playTrack(track, index)}>▶️ 재생</button>
+				<button on:click={() => selectTrack(track, index)}>▶️ 재생</button>
 			</div>
 		{/each}
+	</div>
+{/if}
+
+<!-- ✅ 현재 재생 중인 트랙 및 가사 표시 -->
+{#if currentTrack}
+	<div class="now-playing">
+		<h2>{currentTrack.name} - {currentTrack.artists.map(a => a.name).join(', ')}</h2>
+		<p class="lyrics">{lyrics}</p>
 	</div>
 {/if}
 
@@ -76,6 +100,7 @@
 		padding: 10px;
 		border-bottom: 1px solid #ddd;
 		transition: background 0.2s;
+		cursor: pointer;
 	}
 	.track:hover {
 		background: #f4f4f4;
@@ -120,5 +145,22 @@
 
 	.track button:hover {
 		background-color: hotpink;
+	}
+
+	.now-playing {
+		background: black;
+		color: white;
+		padding: 20px;
+		border-radius: 10px;
+		margin-top: 20px;
+		text-align: center;
+	}
+
+	.lyrics {
+		white-space: pre-line;
+		margin-top: 10px;
+		color: #ddd;
+		font-size: 16px;
+		font-family: "Arial", sans-serif;
 	}
 </style>
