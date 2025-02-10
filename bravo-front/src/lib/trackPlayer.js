@@ -1,11 +1,13 @@
 // /bravo-front/src/lib/trackPlayer.js
 import { get } from 'svelte/store';
 
+// .env 파일에 설정된 백엔드 URL을 사용합니다.
+// 만약 환경변수가 없다면 기본값 http://localhost:3001 을 사용합니다.
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+
 // ✅ YouTube에서 videoId 가져오기 (백엔드 호출)
 async function getYouTubeVideo(trackName, artistName) {
-	const url = `http://localhost:3001/api/youtube/search?trackName=${encodeURIComponent(
-		trackName
-	)}&artistName=${encodeURIComponent(artistName)}`;
+	const url = `${backendUrl}/api/youtube/search?trackName=${encodeURIComponent(trackName)}&artistName=${encodeURIComponent(artistName)}`;
 	console.log('검색한 키워드: ', `${trackName} ${artistName} official audio`);
 	console.log('백엔드 유튜브 검색 url은: ', url);
 

@@ -6,13 +6,16 @@
 	import { get } from 'svelte/store';
 	import { playTrack } from '$lib/trackPlayer.js';
 
+	// .env 파일에 설정된 백엔드 URL을 사용합니다.
+	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+
 	// ✅ Spotify에서 트랙 검색 (백엔드 호출)
 	async function searchTracks() {
 		if (!get(searchQuery)) return;
 
 		try {
 			const res = await fetch(
-				`http://localhost:3001/api/spotify/search?q=${encodeURIComponent(get(searchQuery))}`
+				`${backendUrl}/api/spotify/search?q=${encodeURIComponent(get(searchQuery))}`
 			);
 			if (!res.ok) throw new Error(`HTTP 오류! 상태 코드: ${res.status}`);
 			const data = await res.json();
@@ -21,6 +24,8 @@
 			console.error('❌ Spotify 검색 요청 실패:', error);
 		}
 	}
+
+	onMount(searchTracks);
 </script>
 
 <div class="search-container">
@@ -86,9 +91,6 @@
 		height: 50px;
 		margin-right: 10px;
 	}
-	.button-container {
-		text-align: center;
-	}
 	.search-container button {
 		white-space: nowrap;
 		background: #1db954;
@@ -105,7 +107,6 @@
 	.search-container button:hover {
 		background: palevioletred;
 	}
-
 	.track button {
 		background: #1db954;
 		color: white;
@@ -117,7 +118,6 @@
 		transition: background 0.3s;
 		margin-left: 10px;
 	}
-
 	.track button:hover {
 		background-color: hotpink;
 	}

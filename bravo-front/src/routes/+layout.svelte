@@ -5,6 +5,8 @@
 	import { youtubeApiKey } from '$lib/youtubeStore.js';
 	import { searchResults } from '$lib/searchStore.js'; // ✅ 추가
 	import { playTrack } from '$lib/trackPlayer.js';
+	console.log("백엔드 URL:", import.meta.env.VITE_BACKEND_URL);
+
 
 	let isPlaying = false;
 	let youtubePlayer;
