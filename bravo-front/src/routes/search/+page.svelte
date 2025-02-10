@@ -8,13 +8,16 @@
 	let currentTrack = null;
 	let lyrics = "가사를 불러오는 중...";
 
+	// .env 파일에 설정된 백엔드 URL을 사용합니다.
+	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+
 	// ✅ Spotify에서 트랙 검색 (백엔드 호출)
 	async function searchTracks() {
 		if (!get(searchQuery)) return;
 
 		try {
 			const res = await fetch(
-				`http://localhost:3000/api/spotify/search?q=${encodeURIComponent(get(searchQuery))}`
+				`${backendUrl}/api/spotify/search?q=${encodeURIComponent(get(searchQuery))}`
 			);
 			if (!res.ok) throw new Error(`HTTP 오류! 상태 코드: ${res.status}`);
 			const data = await res.json();
@@ -24,19 +27,13 @@
 		}
 	}
 
-	// ✅ 곡을 선택하면 재생 + 가사 가져오기
+		// ✅ 트랙 선택 및 재생, 가사 가져오기
 	async function selectTrack(track, index) {
 		currentTrack = track;
-		lyrics = "가사를 불러오는 중...";
-
-		// YouTube에서 곡 재생
-		playTrack(track, index);
-
-		// Musixmatch에서 가사 가져오기
-		const fetchedLyrics = await getLyrics(track.name, track.artists.map(a => a.name).join(', '));
-		lyrics = fetchedLyrics ? fetchedLyrics : "가사를 찾을 수 없습니다.";
+		playTrack(track); // 트랙 재생 함수 호출
 	}
 
+	onMount(searchTracks);
 </script>
 
 <div class="search-container">
@@ -111,9 +108,6 @@
 		height: 50px;
 		margin-right: 10px;
 	}
-	.button-container {
-		text-align: center;
-	}
 	.search-container button {
 		white-space: nowrap;
 		background: #1db954;
@@ -130,7 +124,6 @@
 	.search-container button:hover {
 		background: palevioletred;
 	}
-
 	.track button {
 		background: #1db954;
 		color: white;
@@ -142,7 +135,6 @@
 		transition: background 0.3s;
 		margin-left: 10px;
 	}
-
 	.track button:hover {
 		background-color: hotpink;
 	}

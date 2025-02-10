@@ -1,21 +1,19 @@
 const BACKEND_URL = "http://localhost:3000"; // 백엔드 URL 정의
 
+// ✅ YouTube에서 videoId 가져오기 (백엔드 호출)
 async function getYouTubeVideo(trackName, artistName) {
-  try {
-    const url = `${BACKEND_URL}/api/youtube/search?track=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}`;
-    console.log(`🔍 YouTube API 요청: ${url}`);
-    
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`YouTube 검색 실패! HTTP 상태 코드: ${res.status}`);
-    
-    const data = await res.json();
-    console.log(`✅ YouTube API 응답:`, data);
-    
-    return data.videoId || null;
-  } catch (error) {
-    console.error('❌ YouTube 검색 오류:', error);
-    return null;
-  }
+	const url = `${BACKEND_URL}/api/youtube/search?trackName=${encodeURIComponent(trackName)}&artistName=${encodeURIComponent(artistName)}`; //
+	console.log('검색한 키워드: ', `${trackName} ${artistName} official audio`);
+	console.log('백엔드 유튜브 검색 url은: ', url);
+
+	try {
+		const response = await fetch(url);
+		const data = await response.json();
+		return data.videoId || null;
+	} catch (error) {
+		console.error('❌ YouTube 검색 요청 실패:', error);
+		return null;
+	}
 }
 
 export async function playTrack(track, index) {
