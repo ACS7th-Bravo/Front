@@ -7,7 +7,15 @@ async function getYouTubeVideo(trackName, artistName) {
 	console.log('백엔드 유튜브 검색 url은: ', url);
 
 	try {
-		const response = await fetch(url);
+		const response = await fetch(url, {
+			headers: {
+				'Content-Type': 'application/json', // ✅ JSON 요청
+				'ngrok-skip-browser-warning': '69420' // ✅ ngrok 보안 경고 우회
+			}
+		});
+		if (!response.ok) {
+			throw new Error(`HTTP 오류! 상태 코드: ${response.status}`);
+		}
 		const data = await response.json();
 		return data.videoId || null;
 	} catch (error) {

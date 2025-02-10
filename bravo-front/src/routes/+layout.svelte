@@ -1,459 +1,474 @@
+<!-- /bravo-front/src/routes/+layout.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import { searchResults } from '$lib/searchStore.js';
 	import { playTrack } from '$lib/trackPlayer.js';
 	import * as jwt_decode from 'jwt-decode';
-  
-	// 로그인 상태 및 사용자 정보 변수
+	import { writable } from 'svelte/store';
+	import { goto } from '$app/navigation';
+
+	// 로그인 상태 및 사용자 정보
 	let isLoggedIn = false;
 	let user = { name: '', picture: '' };
-  
-	// 로그아웃 함수: localStorage에서 토큰 삭제 후 홈으로 리다이렉트
+
+	// 현재 재생 중인 트랙 정보를 저장하는 스토어
+	const currentTrack = writable({ name: '', artist: '', albumImage: '' });
+	// 하위 페이지(예: 상세페이지)에서 사용할 수 있도록 context에 등록
+	setContext('currentTrack', currentTrack);
+
+	// 로그아웃 함수
 	function logout() {
-	  localStorage.removeItem("jwt_token");
-	  isLoggedIn = false;
-	  user = { name: '', picture: '' };
-	  window.location.href = "/";
+		localStorage.removeItem("jwt_token");
+		isLoggedIn = false;
+		user = { name: '', picture: '' };
+		window.location.href = "/";
 	}
-  
-	// onMount: URL에서 토큰 추출, localStorage 저장, 로그인 상태 및 사용자 정보 업데이트
+
+	// onMount: URL에서 토큰 추출, 사용자 정보 업데이트, YouTube API 로드, 이벤트 등록
 	onMount(() => {
-	  const urlParams = new URLSearchParams(window.location.search);
-	  const tokenFromUrl = urlParams.get("token");
-	  if (tokenFromUrl) {
-		localStorage.setItem("jwt_token", tokenFromUrl);
-		isLoggedIn = true;
-		try {
-		  // 타입 단언을 통해 jwt_decode를 함수로 취급합니다.
-		  const decoded: any = (jwt_decode as unknown as (token: string) => any)(tokenFromUrl);
-		  user.name = decoded.name;
-		  user.picture = decoded.picture;
-		} catch (error) {
-		  console.error("JWT 디코딩 오류:", error);
-		}
-		// URL에서 토큰 제거
-		window.history.replaceState({}, document.title, "/");
-	  } else {
-		const savedToken = localStorage.getItem("jwt_token");
-		if (savedToken) {
-		  isLoggedIn = true;
-		  try {
-			const decoded: any = (jwt_decode as unknown as (token: string) => any)(savedToken);
-			user.name = decoded.name;
-			user.picture = decoded.picture;
-		  } catch (error) {
-			console.error("JWT 디코딩 오류:", error);
-		  }
+		const urlParams = new URLSearchParams(window.location.search);
+		const tokenFromUrl = urlParams.get("token");
+		if (tokenFromUrl) {
+			localStorage.setItem("jwt_token", tokenFromUrl);
+			isLoggedIn = true;
+			try {
+				const decoded: any = (jwt_decode as unknown as (token: string) => any)(tokenFromUrl);
+				user.name = decoded.name;
+				user.picture = decoded.picture;
+			} catch (error) {
+				console.error("JWT 디코딩 오류:", error);
+			}
+			// URL에서 토큰 제거
+			window.history.replaceState({}, document.title, "/");
 		} else {
-		  isLoggedIn = false;
+			const savedToken = localStorage.getItem("jwt_token");
+			if (savedToken) {
+				isLoggedIn = true;
+				try {
+					const decoded: any = (jwt_decode as unknown as (token: string) => any)(savedToken);
+					user.name = decoded.name;
+					user.picture = decoded.picture;
+				} catch (error) {
+					console.error("JWT 디코딩 오류:", error);
+				}
+			} else {
+				isLoggedIn = false;
+			}
 		}
-	  }
-  
-	  // 5초마다 로그인 상태와 JWT 토큰(있는 경우)을 콘솔에 출력 (디버깅용)
-	  setInterval(() => {
-		console.log("로그인 상태:", isLoggedIn, "JWT 토큰:", localStorage.getItem("jwt_token"));
-	  }, 5000);
-  
-	  loadYouTubeAPI();
-	  window.addEventListener('playTrack', handlePlayTrack);
+
+		// 디버깅용: 5초마다 로그인 상태 출력
+		setInterval(() => {
+			console.log("로그인 상태:", isLoggedIn, "JWT 토큰:", localStorage.getItem("jwt_token"));
+		}, 5000);
+
+		loadYouTubeAPI();
+		window.addEventListener('playTrack', handlePlayTrack);
 	});
-  
-	// 기존 YouTube 플레이어 관련 코드
+
+	// YouTube 플레이어 관련 변수
 	let isPlaying = false;
 	let youtubePlayer;
 	let currentYouTubeVideoId = null;
 	let currentTrackIndex = -1;
-	let currentTrack = {
-	  name: '',
-	  artist: '',
-	  albumImage: ''
-	};
 	let currentTime = 0;
 	let duration = 0;
 	let progress = 0;
 	let interval = null;
-  
+
+	// 시간 포맷 함수 (초 → mm:ss)
 	function formatTime(seconds) {
-	  const min = Math.floor(seconds / 60);
-	  const sec = Math.floor(seconds % 60);
-	  return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+		const min = Math.floor(seconds / 60);
+		const sec = Math.floor(seconds % 60);
+		return `${min}:${sec < 10 ? '0' : ''}${sec}`;
 	}
-  
+
+	// 상세페이지로 이동 (플레이어 썸네일 클릭 시)
+	function navigateToSongPage() {
+		goto('/song');
+	}
+
+	// 전역 플레이어에서 곡 재생 (YouTube 플레이어 초기화/재생)
 	function handlePlayTrack(event) {
-	  const { videoId, track, index } = event.detail;
-	  if (videoId) {
-		currentTrack = {
-		  name: track.name,
-		  artist: track.artists.map((a) => a.name).join(', '),
-		  albumImage: track.album.images[0]?.url || ''
-		};
-		currentYouTubeVideoId = videoId;
-		currentTrackIndex = index;
-		if (!youtubePlayer) {
-		  youtubePlayer = new YT.Player('youtube-player', {
-			height: '0',
-			width: '0',
-			videoId: videoId,
-			playerVars: {
-			  autoplay: 1,
-			  controls: 0,
-			  showinfo: 0,
-			  modestbranding: 1,
-			  loop: 0,
-			  rel: 0
-			},
-			events: {
-			  onReady: () => {
+		const { videoId, track, index } = event.detail;
+		if (videoId) {
+			currentTrack.update(t => ({
+				...t,
+				name: track.name,
+				artist: track.artists.map(a => a.name).join(', '),
+				albumImage: track.album.images[0]?.url || ''
+			}));
+
+			currentYouTubeVideoId = videoId;
+			currentTrackIndex = index;
+
+			if (!youtubePlayer) {
+				youtubePlayer = new YT.Player('youtube-player', {
+					height: '0',
+					width: '0',
+					videoId: videoId,
+					playerVars: {
+						autoplay: 1,
+						controls: 0,
+						showinfo: 0,
+						modestbranding: 1,
+						loop: 0,
+						rel: 0
+					},
+					events: {
+						onReady: () => {
+							youtubePlayer.playVideo();
+							startProgressUpdate();
+						},
+						onStateChange: (event) => {
+							console.log('🎬 YouTube 플레이어 상태 변경:', event.data);
+							if (event.data === YT.PlayerState.ENDED) {
+								console.log('✅ 곡이 끝남! 다음 곡 자동 재생 시작...');
+								playNextTrack();
+							} else if (event.data === YT.PlayerState.PLAYING) {
+								console.log('▶️ 곡 재생 중...');
+								startProgressUpdate();
+							} else if (event.data === YT.PlayerState.BUFFERING) {
+								console.log('⏳ 버퍼링 중...');
+							} else if (event.data === YT.PlayerState.PAUSED) {
+								console.log('⏸️ 곡 일시 정지됨');
+							} else {
+								console.log('⚠️ 알 수 없는 상태 코드:', event.data);
+								clearInterval(interval);
+							}
+						}
+					}
+				});
+			} else {
+				youtubePlayer.loadVideoById(videoId);
+				startProgressUpdate();
+			}
+			isPlaying = true;
+		}
+	}
+
+	// 다음 곡 자동 재생 함수
+	function playNextTrack() {
+		console.log('⏭️ playNextTrack() 호출됨!');
+		const tracks = $searchResults; // searchResults 스토어의 값 사용
+		console.log('🔍 현재 검색된 트랙 목록:', tracks);
+		console.log('🎵 현재 트랙 인덱스:', currentTrackIndex);
+		if (currentTrackIndex < tracks.length - 1) {
+			const nextTrack = tracks[currentTrackIndex + 1];
+			console.log('✅ 다음 재생할 트랙:', nextTrack);
+			playTrack(nextTrack, currentTrackIndex + 1);
+		} else {
+			console.log('⏹️ 더 이상 재생할 트랙이 없습니다.');
+		}
+	}
+
+	// 재생 시간 업데이트 함수
+	function startProgressUpdate() {
+		clearInterval(interval);
+		interval = setInterval(() => {
+			if (youtubePlayer && youtubePlayer.getCurrentTime) {
+				currentTime = youtubePlayer.getCurrentTime();
+				duration = youtubePlayer.getDuration();
+				progress = (currentTime / duration) * 100;
+			}
+		}, 500);
+	}
+
+	// 슬라이더 이동 시 재생 위치 변경 함수
+	function seekTrack(event) {
+		const newTime = (event.target.value / 100) * duration;
+		youtubePlayer.seekTo(newTime, true);
+	}
+
+	// 일시정지/재생 토글 함수
+	function togglePause() {
+		if (youtubePlayer) {
+			if (isPlaying) {
+				youtubePlayer.pauseVideo();
+			} else {
 				youtubePlayer.playVideo();
 				startProgressUpdate();
-			  },
-			  onStateChange: (event) => {
-				console.log('🎬 YouTube 플레이어 상태 변경:', event.data);
-				if (event.data === YT.PlayerState.ENDED) {
-				  playNextTrack();
-				} else if (event.data === YT.PlayerState.PLAYING) {
-				  startProgressUpdate();
-				} else if (event.data === YT.PlayerState.BUFFERING) {
-				  console.log('⏳ 버퍼링 중...');
-				} else if (event.data === YT.PlayerState.PAUSED) {
-				  console.log('⏸️ 곡 일시 정지됨');
-				} else {
-				  clearInterval(interval);
-				}
-			  }
 			}
-		  });
-		} else {
-		  youtubePlayer.loadVideoById(videoId);
-		  startProgressUpdate();
+			isPlaying = !isPlaying;
 		}
-		isPlaying = true;
-	  }
 	}
-  
-	async function playNextTrack() {
-	  const tracks = $searchResults;
-	  if (currentTrackIndex < tracks.length - 1) {
-		const nextTrack = tracks[currentTrackIndex + 1];
-		playTrack(nextTrack, currentTrackIndex + 1);
-	  }
-	}
-  
-	function startProgressUpdate() {
-	  clearInterval(interval);
-	  interval = setInterval(() => {
-		if (youtubePlayer && youtubePlayer.getCurrentTime) {
-		  currentTime = youtubePlayer.getCurrentTime();
-		  duration = youtubePlayer.getDuration();
-		  progress = (currentTime / duration) * 100;
-		}
-	  }, 500);
-	}
-  
-	function seekTrack(event) {
-	  const newTime = (event.target.value / 100) * duration;
-	  youtubePlayer.seekTo(newTime, true);
-	}
-  
-	function togglePause() {
-	  if (youtubePlayer) {
-		isPlaying ? youtubePlayer.pauseVideo() : youtubePlayer.playVideo();
-		isPlaying = !isPlaying;
-	  }
-	}
-  
+
+	// YouTube API 로드 함수
 	function loadYouTubeAPI() {
-	  const script = document.createElement('script');
-	  script.src = 'https://www.youtube.com/iframe_api';
-	  script.async = true;
-	  document.body.appendChild(script);
+		const script = document.createElement('script');
+		script.src = 'https://www.youtube.com/iframe_api';
+		script.async = true;
+		document.body.appendChild(script);
 	}
-  </script>
-  
-  <!-- 헤더 영역: 로그인 상태에 따라 사용자 정보와 로그인/로그아웃 버튼 표시 -->
-  <div class="header">
+</script>
+
+<!-- Header: 로그인/로그아웃 및 사용자 정보 (구글 로그인 포함) -->
+<div class="header">
 	{#if isLoggedIn}
-	  <div class="user-info">
-		<img src={user.picture} alt="Profile Picture" class="profile-pic" />
-		<span class="user-name">{user.name}</span>
-		<button class="logout-btn" on:click={logout}>로그아웃</button>
-	  </div>
+		<div class="user-info">
+			<img src={user.picture} alt="Profile Picture" class="profile-pic" />
+			<span class="user-name">{user.name}</span>
+			<button class="logout-btn" on:click={logout}>로그아웃</button>
+		</div>
 	{:else}
-	<button class="login-btn" on:click={() => window.location.href = "http://localhost:3000/api/google/google-login?prompt=select_account"}>
-		구글 로그인
-	  </button>
+		<button class="login-btn" on:click={() => window.location.href = "http://localhost:3000/api/google/google-login?prompt=select_account"}>
+			구글 로그인
+		</button>
 	{/if}
-  </div>
-  
-  <div class="layout">
+</div>
+
+<div class="layout">
 	<div class="sidebar">
-	  <h2><a href="/">Playlink</a></h2>
-	  <nav>
+		<h2><a href="/">Playlink</a></h2>
+		<nav>
+			<ul>
+				<li><a href="/about">About</a></li>
+				<li><a href="/hi">Hi</a></li>
+				<li><a href="/search">Search</a></li>
+				<li><a href="/song">Podcast</a></li>
+			</ul>
+		</nav>
+		<h3>Library</h3>
 		<ul>
-		  <li><a href="/about">About</a></li>
-		  <li><a href="/hi">Hi</a></li>
-		  <li><a href="/search">Search</a></li>
-		  <li><a href="/podcast">Podcast</a></li>
+			<li><a href="/favorites">Favorites</a></li>
+			<li><a href="/playlist">Playlist</a></li>
 		</ul>
-	  </nav>
-	  <h3>Library</h3>
-	  <ul>
-		<li><a href="/favorites">Favorites</a></li>
-		<li><a href="/playlist">Playlist</a></li>
-	  </ul>
-	  <img src="/logo.png" alt="Logo" class="logo-image" />
+		<div class="logo-container">
+			<img src="/logo.png" alt="Logo" class="logo-image" />
+		</div>
 	</div>
-  
+
 	<div class="main-content">
-	  <h1>Play Link!</h1>
-	  <slot />
+		<h1>Play Link!</h1>
+		<slot />
 	</div>
-  
-	<!-- 전역 플레이어 -->
+
+	<!-- Global Player -->
 	<div class="player">
-	  {#if currentTrack.name}
-		<img src={currentTrack.albumImage} alt="Album Cover" class="player-album-cover" />
-		<div class="player-track-info">
-		  <strong>{currentTrack.name}</strong>
-		  <p>{currentTrack.artist}</p>
-		</div>
-		<div class="wrap-time">
-		  <div class="time-info">
-			<button on:click={togglePause}>
-			  {isPlaying ? '⏸️' : '▶️'}
-			</button>
-			<span>{formatTime(currentTime)}</span>
-			<input
-			  type="range"
-			  min="0"
-			  max="100"
-			  step="0.1"
-			  bind:value={progress}
-			  on:input={seekTrack}
-			  class="progress-bar"
-			/>
-			<span>{formatTime(duration)}</span>
-		  </div>
-		</div>
-	  {/if}
+		{#if $currentTrack.name}
+			<!-- 앨범 썸네일 클릭 시 상세페이지(/song)로 이동 -->
+			<a href="/song" tabindex="0" role="button" on:click|preventDefault={navigateToSongPage}>
+				<img src={$currentTrack?.albumImage || ''} alt="Album Cover" class="player-album-cover" />
+			</a>
+			<div class="player-track-info">
+				<strong>{$currentTrack.name}</strong>
+				<p>{$currentTrack.artist}</p>
+			</div>
+			<div class="wrap-time">
+				<div class="time-info">
+					<button on:click={togglePause}>
+						{isPlaying ? '⏸️' : '▶️'}
+					</button>
+					<span>{formatTime(currentTime)}</span>
+					<input type="range" min="0" max="100" step="0.1" bind:value={progress} on:input={seekTrack} class="progress-bar" />
+					<span>{formatTime(duration)}</span>
+				</div>
+			</div>
+		{/if}
 	</div>
-  
+
+	<!-- YouTube 플레이어 컨테이너 (화면에는 보이지 않음) -->
 	<div id="youtube-player"></div>
-  </div>
-  
-  <style>
+</div>
+
+<style>
 	:global(body) {
-	  margin: 0;
-	  padding: 0;
+		margin: 0;
+		padding: 0;
 	}
-  
 	*::-webkit-scrollbar {
-	  display: none;
+		display: none;
 	}
-  
 	* {
-	  -ms-overflow-style: none;
-	  scrollbar-width: none;
+		-ms-overflow-style: none;
+		scrollbar-width: none;
 	}
-  
 	.header {
-	  position: fixed;
-	  top: 0;
-	  right: 0;
-	  padding: 10px;
-	  z-index: 200;
-	  display: flex;
-	  align-items: center;
-	  gap: 10px;
+		position: fixed;
+		top: 0;
+		width: 100%;
+		background: #222;
+		padding: 10px 20px;
+		z-index: 300;
+		display: flex;
+		justify-content: flex-end;
+		align-items: center;
+		gap: 10px;
 	}
-  
 	.user-info {
-	  display: flex;
-	  align-items: center;
-	  gap: 10px;
+		display: flex;
+		align-items: center;
+		gap: 10px;
 	}
-  
 	.profile-pic {
-	  width: 40px;
-	  height: 40px;
-	  border-radius: 50%;
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
 	}
-  
 	.user-name {
-	  color: white;
-	  font-size: 16px;
-	  font-weight: bold;
+		color: white;
+		font-size: 16px;
+		font-weight: bold;
 	}
-  
 	.login-btn,
 	.logout-btn {
-	  padding: 8px 16px;
-	  font-size: 14px;
-	  background-color: #4285f4;
-	  color: white;
-	  border: none;
-	  border-radius: 4px;
-	  cursor: pointer;
-	  transition: background-color 0.3s;
+		padding: 8px 16px;
+		font-size: 14px;
+		background-color: #4285f4;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		transition: background-color 0.3s;
 	}
-  
 	.login-btn:hover,
 	.logout-btn:hover {
-	  background-color: #357ae8;
+		background-color: #357ae8;
 	}
-  
 	.layout {
-	  display: flex;
-	  height: 100vh;
-	  overflow: hidden;
-	  padding-top: 50px; /* 헤더 높이만큼 패딩 추가 */
+		display: flex;
+		height: 100vh;
+		overflow: hidden;
+		padding-top: 60px; /* Header 높이에 맞게 */
 	}
-  
 	.sidebar {
-	  width: 250px;
-	  background-color: white;
-	  color: black;
-	  display: flex;
-	  flex-direction: column;
-	  gap: 20px;
+		width: 250px;
+		background-color: white;
+		color: black;
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
 	}
-  
 	.sidebar h2,
 	h3,
 	nav {
-	  padding-left: 20px;
+		padding-left: 20px;
 	}
-  
+	.logo-container {
+		width: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin-top: auto;
+		gap: 20px;
+		padding-bottom: 70px;
+	}
 	.logo-image {
-	  position: absolute;
-	  bottom: 50px;
-	  width: 250px;
+		width: 100%;
+		max-width: 200px;
+		object-fit: contain;
+		transition: width 0.3s ease-in-out;
 	}
-  
+	.sidebar:visited {
+		color: black;
+	}
 	.sidebar h2 a {
-	  color: black;
-	  text-decoration: none;
-	  font-size: 40px;
-	  transition: font-size 0.3s ease;
+		color: black;
+		text-decoration: none;
+		font-size: 40px;
+		transition: font-size 0.3s ease;
 	}
-  
 	.sidebar h2 a:hover {
-	  color: fuchsia;
-	  font-size: 45px;
+		color: fuchsia;
+		font-size: 45px;
 	}
-  
 	li {
-	  list-style: none;
+		list-style: none;
 	}
-  
 	li a {
-	  font-size: 25px;
-	  color: black;
-	  text-decoration: none;
-	  transition: font-size 0.3s ease;
+		font-size: 25px;
+		color: black;
+		text-decoration: none;
+		transition: font-size 0.3s ease;
 	}
-  
 	li a:hover {
-	  color: deeppink;
-	  font-size: 27px;
+		color: deeppink;
+		font-size: 27px;
 	}
-  
 	.main-content {
-	  flex-grow: 1;
-	  background-color: black;
-	  color: white;
-	  display: flex;
-	  flex-direction: column;
-	  overflow: auto;
-	  padding-bottom: 70px;
+		flex-grow: 1;
+		background-color: black;
+		color: white;
+		display: flex;
+		flex-direction: column;
+		overflow: auto;
+		padding-bottom: 70px;
 	}
-  
 	.player {
-	  display: flex;
-	  align-items: center;
-	  justify-content: space-between;
-	  position: fixed;
-	  bottom: 0;
-	  width: 100%;
-	  height: 70px;
-	  background-color: #222;
-	  color: white;
-	  padding: 0 40px 0 20px;
-	  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
-	  z-index: 100;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		position: fixed;
+		bottom: 0;
+		width: 100%;
+		height: 70px;
+		background-color: #222;
+		color: white;
+		padding: 0 40px 0 20px;
+		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+		z-index: 100;
 	}
-  
 	.player img {
-	  width: 50px;
-	  height: 50px;
-	  border-radius: 5px;
-	  margin-right: 10px;
+		width: 50px;
+		height: 50px;
+		border-radius: 5px;
+		margin-right: 10px;
+		box-shadow: 0 0 5px rgba(255, 255, 255, 0.6);
 	}
-  
 	.player-track-info {
-	  flex-grow: 1;
-	  display: flex;
-	  flex-direction: column;
-	  max-width: 150px;
+		flex-grow: 1;
+		display: flex;
+		flex-direction: column;
+		max-width: 150px;
 	}
-  
 	.player strong {
-	  font-size: 14px;
+		font-size: 14px;
 	}
-  
 	.player p {
-	  font-size: 12px;
-	  color: #bbb;
-	  margin: 0;
+		font-size: 12px;
+		color: #bbb;
+		margin: 0;
 	}
-  
 	.player button {
-	  background: none;
-	  border: none;
-	  color: white;
-	  font-size: 40px;
-	  cursor: pointer;
+		background: none;
+		border: none;
+		color: white;
+		font-size: 40px;
+		cursor: pointer;
 	}
-  
 	.player button:hover {
-	  color: #1db954;
+		color: #1db954;
 	}
-  
 	.wrap-time {
-	  display: flex;
-	  align-items: center;
-	  gap: 8px;
-	  font-size: 14px;
-	  color: #bbb;
-	  width: 90%;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 14px;
+		color: #bbb;
+		width: 90%;
 	}
-  
 	.time-info {
-	  display: flex;
-	  align-items: center;
-	  gap: 8px;
-	  font-size: 14px;
-	  color: #bbb;
-	  width: 80%;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 14px;
+		color: #bbb;
+		width: 80%;
 	}
-  
 	.progress-bar {
-	  width: 80%;
-	  margin: 0 10px;
-	  appearance: none;
-	  background: #555;
-	  height: 5px;
-	  border-radius: 5px;
-	  cursor: pointer;
+		width: 80%;
+		margin: 0 10px;
+		appearance: none;
+		background: #555;
+		height: 5px;
+		border-radius: 5px;
+		cursor: pointer;
 	}
-  
 	.progress-bar::-webkit-slider-thumb {
-	  appearance: none;
-	  background: #1db954;
-	  width: 10px;
-	  height: 10px;
-	  border-radius: 50%;
-	  cursor: pointer;
+		appearance: none;
+		background: #1db954;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		cursor: pointer;
 	}
-  </style>
-  
+</style>
