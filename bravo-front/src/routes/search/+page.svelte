@@ -27,10 +27,18 @@
 		}
 	}
 
-		// ✅ 트랙 선택 및 재생, 가사 가져오기
+	// ✅ 트랙 선택, 재생 및 가사 가져오기
 	async function selectTrack(track, index) {
 		currentTrack = track;
+		lyrics = "가사를 불러오는 중...";
 		playTrack(track); // 트랙 재생 함수 호출
+
+		// 가사 API 호출하여 가사를 가져옵니다.
+		const fetchedLyrics = await getLyrics(
+			track.name,
+			track.artists.map((artist) => artist.name).join(', ')
+		);
+		lyrics = fetchedLyrics ? fetchedLyrics : "가사를 찾을 수 없습니다.";
 	}
 
 	onMount(searchTracks);
@@ -138,7 +146,6 @@
 	.track button:hover {
 		background-color: hotpink;
 	}
-
 	.now-playing {
 		background: black;
 		color: white;
@@ -147,7 +154,6 @@
 		margin-top: 20px;
 		text-align: center;
 	}
-
 	.lyrics {
 		white-space: pre-line;
 		margin-top: 10px;
