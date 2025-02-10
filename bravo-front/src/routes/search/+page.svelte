@@ -74,9 +74,15 @@
 {#if currentTrack}
 	<div class="now-playing">
 		<h2>{currentTrack.name} - {currentTrack.artists.map(a => a.name).join(', ')}</h2>
-		<p class="lyrics">{lyrics}</p>
+		<div class="lyrics">
+			{#each lyrics.split('\n').filter(line => line.trim() !== '') as line}
+				<p>{line}</p>
+			{/each}
+		</div>
 	</div>
 {/if}
+
+
 
 <style>
 	.search-container {
