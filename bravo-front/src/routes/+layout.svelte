@@ -255,6 +255,7 @@
 		display: flex;
 		height: 100vh;
 		overflow: hidden;
+		z-index: 1000;
 	}
 
 	.sidebar {
@@ -266,6 +267,16 @@
 		flex-direction: column;
 		gap: 20px;
 	}
+
+	.main-content h1 {
+  position: sticky;
+  top: 0;
+  z-index: 2;           /* slot 콘텐츠보다 위에 표시 */
+  background-color: black;  /* 배경색을 지정하여 아래 내용과 구분 */
+  margin: 0;
+  padding: 10px;
+}
+
 
 	.sidebar h2,
 	h3,
@@ -337,6 +348,8 @@
 		flex-direction: column;
 		overflow: auto;
 		padding-bottom: 70px;
+		position: relative;  /* 추가: main-content 내의 절대 위치 요소 기준 */
+		z-index: 1;
 	}
 
 	.player {
