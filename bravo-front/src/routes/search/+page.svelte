@@ -15,7 +15,14 @@
 
 		try {
 			const res = await fetch(
-				`${backendUrl}/api/spotify/search?q=${encodeURIComponent(get(searchQuery))}`
+				`${backendUrl}/api/spotify/search?q=${encodeURIComponent(get(searchQuery))}`,
+				{
+				headers: {
+					'Content-Type': 'application/json', // ✅ JSON 요청
+					'ngrok-skip-browser-warning': '69420', // ✅ ngrok 보안 경고 우회
+				},
+			}
+				
 			);
 			if (!res.ok) throw new Error(`HTTP 오류! 상태 코드: ${res.status}`);
 			const data = await res.json();

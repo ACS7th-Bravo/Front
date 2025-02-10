@@ -2,9 +2,14 @@
 <script>
 	import { onMount } from 'svelte';
 	// 백엔드에서 Spotify 토큰 관리를 하므로 getAccessToken 호출 제거
+	import { setContext } from 'svelte'; // ✅ `setContext`를 명확하게 import
+	import { writable } from 'svelte/store'; // ✅ writable 추가
+
 	import { youtubeApiKey } from '$lib/youtubeStore.js';
 	import { searchResults } from '$lib/searchStore.js'; // ✅ 추가
 	import { playTrack } from '$lib/trackPlayer.js';
+	import { goto } from '$app/navigation'; //곡 상세페이지로 넘어가는 함수수
+
 	console.log("백엔드 URL:", import.meta.env.VITE_BACKEND_URL);
 
 
@@ -14,11 +19,14 @@
 	let currentTrackIndex = -1; // ✅ 현재 재생 중인 곡의 인덱스 추가
 
 	// ✅ 현재 재생 중인 트랙 정보
-	let currentTrack = {
+	let currentTrack = writable({
 		name: '',
 		artist: '',
 		albumImage: ''
-	};
+	});
+
+	// ✅ Svelte context에 currentTrack 등록 (하위 페이지에서 사용 가능)
+	setContext('currentTrack', currentTrack);
 
 	// ✅ 프로그레스 바 관련 변수
 	let currentTime = 0;
@@ -33,16 +41,21 @@
 		return `${min}:${sec < 10 ? '0' : ''}${sec}`;
 	}
 
+	 // 곡 상세페이지로 넘어가는 함수
+	function navigateToSongPage() {
+		goto('/song');
+	}
 	// ✅ 전역 플레이어에서 곡 재생
 	function handlePlayTrack(event) {
 		const { videoId, track, index } = event.detail;
 
 		if (videoId) {
-			currentTrack = {
-				name: track.name,
-				artist: track.artists.map((a) => a.name).join(', '),
-				albumImage: track.album.images[0]?.url || ''
-			};
+			currentTrack.update(t => ({
+        ...t, // 기존 값을 유지하면서 새 값으로 업데이트
+        name: track.name,
+        artist: track.artists.map((a) => a.name).join(', '),
+        albumImage: track.album.images[0]?.url || ''
+    }));
 
 			currentYouTubeVideoId = videoId;
 			currentTrackIndex = index; // ✅ 현재 재생 중인 트랙 인덱스 저장
@@ -166,7 +179,7 @@
 				<li><a href="/about">About</a></li>
 				<li><a href="/hi">Hi</a></li>
 				<li><a href="/search">Search</a></li>
-				<li><a href="/podcast">Podcast</a></li>
+				<li><a href="/song">Podcast</a></li>
 			</ul>
 		</nav>
 		<h3>Library</h3>
@@ -175,7 +188,9 @@
 			<li><a href="/playlist">Playlist</a></li>
 		</ul>
 
-		<img src="/logo.png" alt="Logo" class="logo-image" />
+		<div class="logo-container">
+			<img src="/logo.png" alt="Logo" class="logo-image" />
+		</div>
 	</div>
 
 	<div class="main-content">
@@ -185,11 +200,16 @@
 
 	<!-- ✅ 전역 플레이어 -->
 	<div class="player">
-		{#if currentTrack.name}
-			<img src={currentTrack.albumImage} alt="Album Cover" class="player-album-cover" />
-			<div class="player-track-info">
-				<strong>{currentTrack.name}</strong>
-				<p>{currentTrack.artist}</p>
+		{#if $currentTrack.name}
+		<a href="/song" tabindex="0" role="button" on:click={navigateToSongPage}>
+			<img
+				src={$currentTrack?.albumImage || ''}
+				alt="Album Cover"
+				class="player-album-cover"
+			/>
+		</a>			<div class="player-track-info">
+				<strong>{$currentTrack.name}</strong>
+				<p>{$currentTrack.artist}</p>
 			</div>
 			<!-- ✅ 현재 재생 시간 / 총 길이 표시 -->
 			<div class="wrap-time">
@@ -253,11 +273,30 @@
 		padding-left: 20px;
 	}
 
-	.logo-image {
+	/* .logo-image {
 		position: absolute;
-		bottom: 50px; /* 하단에서 20px 위에 고정 */
+		bottom: 50px; 
 		width: 250px;
-	}
+	} */
+	
+	.logo-container {
+	width: 100%; /* ✅ 사이드바 크기에 맞게 설정 */
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-top: auto; /* ✅ 사이드바의 하단에 정렬 */
+	gap: 20px;
+	padding-bottom: 70px;
+}
+
+.logo-image {
+	width: 100%; /* ✅ 사이드바 크기에 맞게 조절 */
+	max-width: 200px; /* ✅ 최대 크기 제한 */
+	object-fit: contain; /* ✅ 이미지 비율 유지 */
+	transition: width 0.3s ease-in-out; /* ✅ 크기 변화 애니메이션 */
+}
+
+	
 
 	.sidebar:visited {
 		color: black;
@@ -321,6 +360,8 @@
 		height: 50px;
 		border-radius: 5px;
 		margin-right: 10px;
+		box-shadow: 0 0 5px rgba(255, 255, 255, 0.6); /* ✅ 부드러운 흰색 박스 쉐도우 */
+
 	}
 
 	.player-track-info {
