@@ -173,7 +173,7 @@
 
 <div class="layout">
 	<div class="sidebar">
-		<h2><a href="/">Playlink</a></h2>
+		<h2><a href="/">It-Da</a></h2>
 		<nav>
 			<ul>
 				<li><a href="/about">About</a></li>
@@ -189,12 +189,12 @@
 		</ul>
 
 		<div class="logo-container">
-			<img src="/logo.png" alt="Logo" class="logo-image" />
+			<img src="/logo2.png" alt="Logo" class="logo-image" />
 		</div>
 	</div>
 
 	<div class="main-content">
-		<h1>Play Link!</h1>
+		<h1>It Da!</h1>
 		<slot />
 	</div>
 
