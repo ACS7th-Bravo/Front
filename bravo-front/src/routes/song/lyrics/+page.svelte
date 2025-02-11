@@ -8,7 +8,7 @@
 
   // fade 효과 범위 설정 (예: 상단 0px ~ 800px 사이에서 선형 보간)
   const fadeStart = 300;
-  const fadeEnd = 800;
+  const fadeEnd = 500;
 
   function updateParagraphOpacity() {
     // lyricsContainer 안의 모든 .lyrics-content 요소 선택
@@ -132,7 +132,7 @@
 <style>
   .lyrics-container {
     width: 100%;
-    max-width: 300px;
+    max-width: 500px;
     padding: 20px;
     border-radius: 10px;
     margin: 20px auto 0;
@@ -145,7 +145,7 @@
   }
   .lyrics-content {
     white-space: pre-line;
-    font-size: 16px;
+    font-size: 20px;
     transition: opacity 0.3s ease; /* opacity 변화가 부드럽게 전환됩니다 */
   }
 </style>

@@ -1,4 +1,4 @@
-<!-- /bravo-front/src/routes/+layout.svelte -->
+<!-- /bravo-front/src/routes/song/+page.svelte -->
 
 <script>
 	import { getContext, onMount, tick } from 'svelte';
@@ -127,8 +127,6 @@ style="transform: scale({$headerScale}) translateY({$headerTranslateY}px);"
 		text-align: center;
 		z-index: 0;
 		box-sizing: border-box;
-    min-height: 100vh;
-    max-height: 100vh;
 	}
 
 	/* 배경 이미지 요소 – 메인 콘텐츠 영역(사이드바 너비 250px 제외)을 덮음 */
@@ -211,6 +209,7 @@ style="transform: scale({$headerScale}) translateY({$headerTranslateY}px);"
 		width: 80%;
 		margin: 0 auto;
 		padding: 0;
+		color: white;
 		border-radius: 10px;
 		text-align: center;
 		opacity: 0;

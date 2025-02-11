@@ -5,7 +5,8 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
 		// 여기에 ngrok 호스트를 추가합니다.
-		host: true,
+		host: '127.0.0.1',
+		port: 5174,
 		proxy: {
 			'/api': {
 				target: 'http://localhost:3001',
