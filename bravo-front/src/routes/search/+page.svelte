@@ -77,19 +77,6 @@
 	</div>
 {/if}
 
-<!-- ✅ 현재 재생 중인 트랙 및 가사 표시 -->
-{#if currentTrack}
-	<div class="now-playing">
-		<h2>{currentTrack.name} - {currentTrack.artists.map(a => a.name).join(', ')}</h2>
-		<div class="lyrics">
-			{#each lyrics.split('\n').filter(line => line.trim() !== '') as line}
-				<p>{line}</p>
-			{/each}
-		</div>
-	</div>
-{/if}
-
-
 
 <style>
 	.search-container {

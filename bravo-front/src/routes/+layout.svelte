@@ -1,19 +1,19 @@
 <!-- /bravo-front/src/routes/+layout.svelte -->
 <script lang="ts">
 	import { onMount, setContext } from 'svelte';
-	import { searchResults } from '$lib/searchStore.js';
+	import { searchResults } from '$lib/searchStore.js'; // 검색 결과 스토어 (트랙 목록)
 	import { playTrack } from '$lib/trackPlayer.js';
 	import * as jwt_decode from 'jwt-decode';
 	import { writable } from 'svelte/store';
 	import { goto } from '$app/navigation';
 
-	// 로그인 상태 및 사용자 정보
+	// 로그인 상태 및 사용자 정보 (일반 변수 사용 → 필요 시 writable로 전환)
 	let isLoggedIn = false;
 	let user = { name: '', picture: '' };
 
 	// 현재 재생 중인 트랙 정보를 저장하는 스토어
 	const currentTrack = writable({ name: '', artist: '', albumImage: '' });
-	// 하위 페이지(예: 상세페이지)에서 사용할 수 있도록 context에 등록
+	// 하위 페이지에서 사용할 수 있도록 context에 등록
 	setContext('currentTrack', currentTrack);
 
 	// 로그아웃 함수
@@ -24,7 +24,6 @@
 		window.location.href = "/";
 	}
 
-	// onMount: URL에서 토큰 추출, 사용자 정보 업데이트, YouTube API 로드, 이벤트 등록
 	onMount(() => {
 		const urlParams = new URLSearchParams(window.location.search);
 		const tokenFromUrl = urlParams.get("token");
@@ -38,7 +37,6 @@
 			} catch (error) {
 				console.error("JWT 디코딩 오류:", error);
 			}
-			// URL에서 토큰 제거
 			window.history.replaceState({}, document.title, "/");
 		} else {
 			const savedToken = localStorage.getItem("jwt_token");
@@ -56,7 +54,6 @@
 			}
 		}
 
-		// 디버깅용: 5초마다 로그인 상태 출력
 		setInterval(() => {
 			console.log("로그인 상태:", isLoggedIn, "JWT 토큰:", localStorage.getItem("jwt_token"));
 		}, 5000);
@@ -69,27 +66,26 @@
 	let isPlaying = false;
 	let youtubePlayer;
 	let currentYouTubeVideoId = null;
-	let currentTrackIndex = -1;
+	let currentTrackIndex = -1; // 전역 변수로 현재 트랙 인덱스 저장
 	let currentTime = 0;
 	let duration = 0;
 	let progress = 0;
 	let interval = null;
 
-	// 시간 포맷 함수 (초 → mm:ss)
 	function formatTime(seconds) {
 		const min = Math.floor(seconds / 60);
 		const sec = Math.floor(seconds % 60);
 		return `${min}:${sec < 10 ? '0' : ''}${sec}`;
 	}
 
-	// 상세페이지로 이동 (플레이어 썸네일 클릭 시)
 	function navigateToSongPage() {
 		goto('/song');
 	}
 
-	// 전역 플레이어에서 곡 재생 (YouTube 플레이어 초기화/재생)
+	// 전역 플레이어에서 CustomEvent 'playTrack' 수신
 	function handlePlayTrack(event) {
 		const { videoId, track, index } = event.detail;
+		console.log("handlePlayTrack() received index:", index); // 디버깅용 로그
 		if (videoId) {
 			currentTrack.update(t => ({
 				...t,
@@ -97,10 +93,9 @@
 				artist: track.artists.map(a => a.name).join(', '),
 				albumImage: track.album.images[0]?.url || ''
 			}));
-
 			currentYouTubeVideoId = videoId;
-			currentTrackIndex = index;
-
+			currentTrackIndex = index; // index 값 저장
+			console.log("저장된 currentTrackIndex:", currentTrackIndex);
 			if (!youtubePlayer) {
 				youtubePlayer = new YT.Player('youtube-player', {
 					height: '0',
@@ -120,19 +115,17 @@
 							startProgressUpdate();
 						},
 						onStateChange: (event) => {
-							console.log('🎬 YouTube 플레이어 상태 변경:', event.data);
+							console.log('YT 플레이어 상태 변경:', event.data);
 							if (event.data === YT.PlayerState.ENDED) {
 								console.log('✅ 곡이 끝남! 다음 곡 자동 재생 시작...');
 								playNextTrack();
 							} else if (event.data === YT.PlayerState.PLAYING) {
-								console.log('▶️ 곡 재생 중...');
 								startProgressUpdate();
 							} else if (event.data === YT.PlayerState.BUFFERING) {
 								console.log('⏳ 버퍼링 중...');
 							} else if (event.data === YT.PlayerState.PAUSED) {
-								console.log('⏸️ 곡 일시 정지됨');
+								console.log('⏸️ 일시 정지됨');
 							} else {
-								console.log('⚠️ 알 수 없는 상태 코드:', event.data);
 								clearInterval(interval);
 							}
 						}
@@ -147,21 +140,21 @@
 	}
 
 	// 다음 곡 자동 재생 함수
-	function playNextTrack() {
+	async function playNextTrack() {
 		console.log('⏭️ playNextTrack() 호출됨!');
-		const tracks = $searchResults; // searchResults 스토어의 값 사용
-		console.log('🔍 현재 검색된 트랙 목록:', tracks);
-		console.log('🎵 현재 트랙 인덱스:', currentTrackIndex);
-		if (currentTrackIndex < tracks.length - 1) {
+		const tracks = $searchResults; // 검색 결과 스토어 (트랙 배열)
+		console.log('현재 검색된 트랙 목록:', tracks);
+		console.log('현재 트랙 인덱스:', currentTrackIndex);
+		if (typeof currentTrackIndex === "number" && currentTrackIndex < tracks.length - 1) {
 			const nextTrack = tracks[currentTrackIndex + 1];
-			console.log('✅ 다음 재생할 트랙:', nextTrack);
+			console.log('다음 재생할 트랙:', nextTrack);
+			// 다음 트랙 재생 시, index를 currentTrackIndex + 1로 전달
 			playTrack(nextTrack, currentTrackIndex + 1);
 		} else {
-			console.log('⏹️ 더 이상 재생할 트랙이 없습니다.');
+			console.log('더 이상 재생할 트랙이 없습니다.');
 		}
 	}
 
-	// 재생 시간 업데이트 함수
 	function startProgressUpdate() {
 		clearInterval(interval);
 		interval = setInterval(() => {
@@ -173,13 +166,11 @@
 		}, 500);
 	}
 
-	// 슬라이더 이동 시 재생 위치 변경 함수
 	function seekTrack(event) {
 		const newTime = (event.target.value / 100) * duration;
 		youtubePlayer.seekTo(newTime, true);
 	}
 
-	// 일시정지/재생 토글 함수
 	function togglePause() {
 		if (youtubePlayer) {
 			if (isPlaying) {
@@ -192,7 +183,6 @@
 		}
 	}
 
-	// YouTube API 로드 함수
 	function loadYouTubeAPI() {
 		const script = document.createElement('script');
 		script.src = 'https://www.youtube.com/iframe_api';
@@ -238,7 +228,7 @@
 	</div>
 
 	<div class="main-content">
-		<h1>Play Link!</h1>
+		<h1></h1>
 		<slot />
 	</div>
 
@@ -266,7 +256,6 @@
 		{/if}
 	</div>
 
-	<!-- YouTube 플레이어 컨테이너 (화면에는 보이지 않음) -->
 	<div id="youtube-player"></div>
 </div>
 
@@ -328,7 +317,7 @@
 		display: flex;
 		height: 100vh;
 		overflow: hidden;
-		padding-top: 60px; /* Header 높이에 맞게 */
+		padding-top: 60px;
 	}
 	.sidebar {
 		width: 250px;
@@ -390,8 +379,10 @@
 		color: white;
 		display: flex;
 		flex-direction: column;
-		overflow: auto;
+		overflow: hidden;
 		padding-bottom: 70px;
+		position: relative;
+		z-index: 1;
 	}
 	.player {
 		display: flex;
