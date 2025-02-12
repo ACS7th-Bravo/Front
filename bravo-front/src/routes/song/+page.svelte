@@ -239,5 +239,6 @@ style="transform: scale({$headerScale}) translateY({$headerTranslateY}px);"
 		max-height: fit-content;
 		margin: 20px auto 0;
 		padding: 20px;
+		text-align: center;
 	}
 </style>
