@@ -57,6 +57,20 @@
 		}
 	}
 
+  // 최신 NEW: 하이라이트된 가사가 화면 중앙으로 자동 스크롤되도록 처리
+	$: if (activeLineIndex !== -1) {
+		// tick()을 사용해 DOM 업데이트가 완료된 후 실행
+		tick().then(() => {
+			// lyricsContainer 내부에서 하이라이트 클래스를 가진 첫 번째 요소 선택
+			const highlightedEl = lyricsContainer.querySelector('.lyrics-content.highlight');
+			if (highlightedEl) {
+				// 부드럽게 중앙 정렬되도록 스크롤 처리
+				highlightedEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			}
+		});
+	}
+	// ==========================
+
 	// 가사를 API로부터 가져오는 함수
 	async function fetchLyrics(song, artist) {
 		const cacheKey = `lyrics-${song}-${artist}`;
