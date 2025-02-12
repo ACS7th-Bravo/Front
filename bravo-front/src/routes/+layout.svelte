@@ -2,13 +2,23 @@
 <script>
 	import { onMount } from 'svelte';
 	// 백엔드에서 Spotify 토큰 관리를 하므로 getAccessToken 호출 제거
-	import { setContext } from 'svelte'; // ✅ `setContext`를 명확하게 import
-	import { writable } from 'svelte/store'; // ✅ writable 추가
+	import { setContext } from 'svelte'; // ✅ setContext를 명확하게 import
+	import { writable, get } from 'svelte/store'; // ✅ writable 추가
+	import { page } from '$app/stores'; // ← 추가!
 
 	import { youtubeApiKey } from '$lib/youtubeStore.js';
 	import { searchResults } from '$lib/searchStore.js'; // ✅ 추가
 	import { playTrack } from '$lib/trackPlayer.js';
-	import { goto } from '$app/navigation'; //곡 상세페이지로 넘어가는 함수수
+	import { goto } from '$app/navigation'; //곡 상세페이지로 넘어가는 함수
+	import * as jwt_decode from 'jwt-decode';
+
+	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+
+
+// 로그인 상태 및 사용자 정보
+let isLoggedIn = false;
+let user = { name: '', picture: '' };
+
 
 	console.log("백엔드 URL:", import.meta.env.VITE_BACKEND_URL);
 
@@ -17,6 +27,14 @@
 	let youtubePlayer;
 	let currentYouTubeVideoId = null;
 	let currentTrackIndex = -1; // ✅ 현재 재생 중인 곡의 인덱스 추가
+
+	// 로그아웃: 로컬 스토리지에서 토큰 삭제 후 메인 페이지 이동
+	function logout() {
+      localStorage.removeItem("jwt_token");
+      isLoggedIn = false;
+      user = { name: '', picture: '' };
+      window.location.href = "/";
+   }
 
 	// ✅ 현재 재생 중인 트랙 정보
 	let currentTrack = writable({
@@ -27,6 +45,12 @@
 
 	// ✅ Svelte context에 currentTrack 등록 (하위 페이지에서 사용 가능)
 	setContext('currentTrack', currentTrack);
+
+	// ===== [추가된 부분] =====
+	// 글로벌 가사 펼침 상태 스토어를 생성하고 context에 등록합니다.
+	let lyricsExpanded = writable(false); // *** NEW: 글로벌 가사 펼침 상태 스토어 추가 ***
+	setContext('lyricsExpanded', lyricsExpanded); // *** NEW: context에 등록 ***
+	// ==========================
 
 	// ✅ 프로그레스 바 관련 변수
 	let currentTime = 0;
@@ -39,12 +63,19 @@
 		const min = Math.floor(seconds / 60);
 		const sec = Math.floor(seconds % 60);
 		return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+
 	}
 
 	 // 곡 상세페이지로 넘어가는 함수
-	function navigateToSongPage() {
-		goto('/song');
+	 function navigateToSongPage() {
+		const currentPath = get(page).url.pathname;
+		if (currentPath === '/song') {
+			goto('/search');
+		} else {
+			goto('/song');
+		}
 	}
+
 	// ✅ 전역 플레이어에서 곡 재생
 	function handlePlayTrack(event) {
 		const { videoId, track, index } = event.detail;
@@ -165,11 +196,56 @@
 
 	// ✅ 앱 시작: Spotify 토큰 체크 제거, YouTube API 로드, 이벤트 리스너 등록
 	onMount(() => {
+		// URL 파라미터에 토큰이 있으면 처리
+		const urlParams = new URLSearchParams(window.location.search);
+      const tokenFromUrl = urlParams.get("token");
+      if (tokenFromUrl) {
+         localStorage.setItem("jwt_token", tokenFromUrl);
+         isLoggedIn = true;
+         try {
+            const decoded = jwt_decode(tokenFromUrl);
+            user.name = decoded.name;
+            user.picture = decoded.picture;
+         } catch (error) {
+            console.error("JWT 디코딩 오류:", error);
+         }
+         window.history.replaceState({}, document.title, "/");
+      } else {
+         const savedToken = localStorage.getItem("jwt_token");
+         if (savedToken) {
+            isLoggedIn = true;
+            try {
+               const decoded = jwt_decode(savedToken);
+               user.name = decoded.name;
+               user.picture = decoded.picture;
+            } catch (error) {
+               console.error("JWT 디코딩 오류:", error);
+            }
+         } else {
+            isLoggedIn = false;
+         }
+      }
 		console.log('🚀 앱 시작...');
 		loadYouTubeAPI();
 		window.addEventListener('playTrack', handlePlayTrack);
 	});
 </script>
+
+<!-- 로그인/로그아웃 버튼과 사용자 정보는 오른쪽 상단에 고정 -->
+<div class="login-header" style="position: fixed; top: 0; right: 0; z-index: 1010; padding: 10px;">
+	{#if isLoggedIn}
+		 <div class="user-info">
+				<img src={user.picture} alt="Profile Picture" style="width:40px; height:40px; border-radius:50%;" />
+				<span style="color: white; margin-left: 5px;">{user.name}</span>
+				<button on:click={logout} style="margin-left: 10px;">로그아웃</button>
+		 </div>
+	{:else}
+	<button on:click={() => window.location.href = `${backendUrl}/api/google/google-login?prompt=select_account`}>
+		구글 로그인
+	</button>
+	
+	{/if}
+</div>
 
 <div class="layout">
 	<div class="sidebar">
@@ -201,7 +277,7 @@
 	<!-- ✅ 전역 플레이어 -->
 	<div class="player">
 		{#if $currentTrack.name}
-		<a href="/song" tabindex="0" role="button" on:click={navigateToSongPage}>
+		<a href="/song" tabindex="0" role="button" on:click|preventDefault={navigateToSongPage}>
 			<img
 				src={$currentTrack?.albumImage || ''}
 				alt="Album Cover"

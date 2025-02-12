@@ -31,7 +31,16 @@ async function getYouTubeVideo(trackName, artistName) {
 
 // ✅ 트랙 재생 함수
 export async function playTrack(track, index) {
+	// 로그인이 되어 있지 않으면 재생 기능을 막음. 2/11 추가
+	if (!localStorage.getItem('jwt_token')) {
+		alert('로그인 후 음악을 재생할 수 있습니다.');
+		return;
+	}
+	console.log(`🎵 재생 요청: ${track.name} - ${track.artists[0].name}`);
+
 	const videoId = await getYouTubeVideo(track.name, track.artists[0].name);
+	console.log(`▶️ 찾은 YouTube Video ID:`, videoId);
+
 	if (videoId) {
 		window.dispatchEvent(
 			new CustomEvent('playTrack', {

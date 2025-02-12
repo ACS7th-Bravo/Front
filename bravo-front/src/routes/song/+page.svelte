@@ -5,11 +5,19 @@
 	import { writable } from 'svelte/store';
 	import Lyrics from './lyrics/+page.svelte';
 
+	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+
+
 	// +layout.svelte에서 공유한 currentTrack 가져오기
 	let currentTrack = getContext('currentTrack');
 
+// 기존: let showLyrics = writable(false); // 로컬 상태였음  
+	// ===== [변경된 부분] =====
+	// +layout.svelte에서 전달한 글로벌 가사 펼침 상태 스토어를 가져옵니다.
+	let showLyrics = getContext('lyricsExpanded'); // *** CHANGED: 로컬 스토어 대신 getContext 사용 ***
+	// ==========================
+
 	// 가사 보이기 여부 store
-	let showLyrics = writable(false);
 	function toggleLyrics() {
 		showLyrics.update(n => !n);
 	}
@@ -41,6 +49,8 @@
 
 	// Song 페이지 컨테이너 참조 (스크롤 이벤트 대상)
 	let songPage;
+	let headerContainer;
+
 
 	function handleScroll() {
 		const scrollTop = songPage ? songPage.scrollTop : 0;
