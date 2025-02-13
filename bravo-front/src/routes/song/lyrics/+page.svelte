@@ -54,8 +54,10 @@
     const cacheKey = `lyrics-${song}-${artist}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
-      lyrics = cached;
-      return;
+      const cachedData = JSON.parse(cached);
+    lyrics = cachedData.lyrics;
+    parsedLyrics = cachedData.parsedLyrics;
+    return;
     }
     try {
       const res = await fetch(`${backendUrl}/api/lyrics?song=${encodeURIComponent(song)}&artist=${encodeURIComponent(artist)}`,
@@ -71,7 +73,7 @@
         if (data.parsedLyrics) {
           parsedLyrics = data.parsedLyrics;
         }
-        sessionStorage.setItem(cacheKey, lyrics);
+				sessionStorage.setItem(cacheKey, JSON.stringify({ lyrics, parsedLyrics }));
       } else {
         lyrics = "가사를 찾을 수 없습니다.";
       }
