@@ -74,15 +74,15 @@
 		padding: 10px;
 		width: 60%;
 		height: 45px;
-		border: 1px solid #7c7c7c;
+		border: 1px solid #626262;
 		border-radius: 15px;
 		font-size: 16px;
 		box-sizing: border-box;
 		margin-right: 20px;
 		margin-left: 5px;
-		background-color: #7c7c7c;
+		background-color: #626262;
 		color: white; /* 입력한 글자 색상 */
-		transition: border 0.5s ease; /* 테두리 전환 효과 추가 */
+		transition: border 0.5s ease, background-color 0.5s ease; /* 테두리 전환 효과 추가 */
 
 
 	}
@@ -90,9 +90,15 @@
   color: white; /* placeholder 글자 색상 */
 }
 
+input:hover{
+	background-color: #7c7c7c;
+
+}
+
 input:focus {
   outline: none;
   border: 2px solid white;
+	background-color: #7c7c7c;
 }
 	.track-list {
 		max-width: 100%;
@@ -104,6 +110,7 @@ input:focus {
 		padding: 10px;
 		border-bottom: 1px solid #ddd;
 		transition: background 0.2s;
+		
 	}
 	.track:hover {
 		background: #f4f4f4;
@@ -113,6 +120,8 @@ input:focus {
 		width: 50px;
 		height: 50px;
 		margin-right: 10px;
+		box-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+
 	}
 
 	h3{
@@ -143,7 +152,7 @@ input:focus {
 		border-radius: 5px;
 		cursor: pointer;
 		transition: background 0.3s;
-		margin-left: 10px;
+		margin-left: auto;
 	}
 	.track button:hover {
 		background-color: hotpink;

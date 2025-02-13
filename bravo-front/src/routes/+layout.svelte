@@ -22,7 +22,9 @@ let user = { name: '', picture: '' };
 
 	console.log("백엔드 URL:", import.meta.env.VITE_BACKEND_URL);
 
-
+	
+	// 기본 볼륨 값을 50로 설정 (0 ~ 100)
+	let volume = 50;
 	let isPlaying = false;
 	let youtubePlayer;
 	let currentYouTubeVideoId = null;
@@ -195,6 +197,15 @@ let user = { name: '', picture: '' };
 		 }
 	}
 
+	// 볼륨 업데이트 함수: 슬라이더 값이 변경될 때 호출
+  function updateVolume(event) {
+    const target = event.target;
+    volume = +target.value; // 문자열을 숫자로 변환
+    if (youtubePlayer) {
+      youtubePlayer.setVolume(volume);
+    }
+  }
+
 	// ✅ YouTube API 로드
 	function loadYouTubeAPI() {
 		 const script = document.createElement('script');
@@ -321,6 +332,19 @@ let user = { name: '', picture: '' };
 							<span>{formatTime(duration)}</span>
 					 </div>
 				</div>
+				<!-- 볼륨 조절 컨트롤 -->
+		<div class="volume-control">
+			<span>Vol</span>
+			<input
+				type="range"
+				min="0"
+				max="100"
+				step="1"
+				bind:value={volume}
+				on:input={updateVolume}
+				class="volume-slider"
+			/>
+		</div>
 		 {/if}
 	</div>
 
@@ -556,5 +580,41 @@ color: white;
 		background-color: hotpink;
 	}
 
-	
+	/* 볼륨 컨트롤 영역 */
+.volume-control {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	margin-left: 20px; /* 필요에 따라 위치 조정 */
+	margin-right: 50px;
+}
+
+/* 볼륨 슬라이더 스타일 */
+.volume-slider {
+	width: 100px; /* 슬라이더 너비 조정 */
+	appearance: none;
+	background: #555;
+	height: 5px;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+/* 웹킷 기반 브라우저용 슬라이더 thumb 스타일 */
+.volume-slider::-webkit-slider-thumb {
+	appearance: none;
+	background: #1db954;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	cursor: pointer;
+}
+
+/* 파이어폭스 등 다른 브라우저 지원 */
+.volume-slider::-moz-range-thumb {
+	background: #1db954;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	cursor: pointer;
+}
 </style>
