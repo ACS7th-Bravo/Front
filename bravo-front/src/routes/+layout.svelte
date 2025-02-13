@@ -10,8 +10,8 @@
 	import { searchResults } from '$lib/searchStore.js'; // ✅ 추가
 	import { playTrack } from '$lib/trackPlayer.js';
 	import { goto } from '$app/navigation'; //곡 상세페이지로 넘어가는 함수
-	import * as jwt_decode from 'jwt-decode';
-
+ import { jwtDecode } from 'jwt-decode';
+ 
 	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 
@@ -212,7 +212,8 @@ let user = { name: '', picture: '' };
 				localStorage.setItem("jwt_token", tokenFromUrl);
 				isLoggedIn = true;
 				try {
-					 const decoded = jwt_decode(tokenFromUrl);
+					 const decoded = jwtDecode(tokenFromUrl);
+					 console.log("디코딩된 JWT:", decoded);
 					 user.name = decoded.name;
 					 user.picture = decoded.picture;
 				} catch (error) {
@@ -224,7 +225,8 @@ let user = { name: '', picture: '' };
 				if (savedToken) {
 					 isLoggedIn = true;
 					 try {
-							const decoded = jwt_decode(savedToken);
+							const decoded = jwtDecode(savedToken);
+							console.log("디코딩된 JWT:", decoded);
 							user.name = decoded.name;
 							user.picture = decoded.picture;
 					 } catch (error) {
@@ -244,8 +246,12 @@ let user = { name: '', picture: '' };
 <div class="login-header" style="position: fixed; top: 0; right: 0; z-index: 1010; padding: 10px;">
 	{#if isLoggedIn}
 			<div class="user-info">
-<img src={user.picture} alt="{user.name}'s profile picture" style="width:40px; height:40px; border-radius:50%;" />
-					 <span>{user.name}</span>
+				<img
+				src={user.picture}
+				alt="{user.name}'s profile picture"
+				style="width:40px; height:40px; border-radius:50%;"
+			/>					 
+			<span>반갑습니다! {user.name} 님</span>
 					 <button on:click={logout} style="margin-left: 10px;">로그아웃</button>
 			</div>
 	{:else}
@@ -279,8 +285,8 @@ let user = { name: '', picture: '' };
 	</div>
 
 	<div class="main-content">
-		 <h1>It Da!</h1>
-		 <slot />
+		<h1 class="typing">It Da!</h1>
+		<slot />
 	</div>
 
 	<!-- ✅ 전역 플레이어 -->
@@ -532,4 +538,23 @@ let user = { name: '', picture: '' };
 	.user-info span{
 color: white;
 	}
+
+	.login-header button{
+
+		background: #1db954;
+		color: white;
+		border: none;
+		padding: 8px 12px;
+		font-size: 14px;
+		border-radius: 5px;
+		cursor: pointer;
+		transition: background 0.3s;
+		margin-left: 10px;
+	}
+
+	.login-header button:hover {
+		background-color: hotpink;
+	}
+
+	
 </style>
