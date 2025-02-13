@@ -40,9 +40,9 @@ let user = { name: '', picture: '' };
 
 	// ✅ 현재 재생 중인 트랙 정보
 	let currentTrack = writable({
-		 name: '',
-		 artist: '',
-		 albumImage: ''
+		 name: 'IT-DA',
+		 artist: 'Team-Bravo',
+		 albumImage: '/logo2.png'
 	});
 
 	// ✅ Svelte context에 currentTrack 등록 (하위 페이지에서 사용 가능)
@@ -65,6 +65,78 @@ let user = { name: '', picture: '' };
 	let duration = 0;
 	let progress = 0;
 	let interval = null;
+
+	//플레이어 글씨 자동 넘김 
+	let scrollingSongNameElement;
+let isSongNameScrollable = false;
+let scrollingArtistElement;
+let isArtistScrollable = false;
+
+// currentTrack 변화에 반응하도록 (dummy 변수를 사용)
+$: {
+  // 현재 트랙의 변화에 의존하도록 dummy 변수를 사용
+  const dummy = $currentTrack.name + $currentTrack.artist;
+  setTimeout(() => {
+    if (scrollingSongNameElement) {
+      const distance = scrollingSongNameElement.scrollWidth - scrollingSongNameElement.clientWidth;
+      isSongNameScrollable = distance > 0;
+      if (isSongNameScrollable) {
+        // 이동 시간(픽셀/초 속도 50px/s, 최소 5초)
+        const moveTime = Math.max(distance / 50, 5);
+        // 전체 애니메이션 시간 = 이동 시간 / 0.8 (즉, 80% 이동, 20% 정지)
+        const totalDuration = moveTime / 0.8;
+        scrollingSongNameElement.style.setProperty('--marquee-duration', `${totalDuration}s`);
+        scrollingSongNameElement.style.setProperty('--overflow-distance', `${distance}px`);
+        // 새로운 곡 재생 시 강제 재시작
+        scrollingSongNameElement.classList.remove('scrollable');
+        void scrollingSongNameElement.offsetWidth;
+        scrollingSongNameElement.classList.add('scrollable');
+      }
+    }
+    if (scrollingArtistElement) {
+      const distance = scrollingArtistElement.scrollWidth - scrollingArtistElement.clientWidth;
+      isArtistScrollable = distance > 0;
+      if (isArtistScrollable) {
+        const moveTime = Math.max(distance / 50, 5);
+        const totalDuration = moveTime / 0.8;
+        scrollingArtistElement.style.setProperty('--marquee-duration', `${totalDuration}s`);
+        scrollingArtistElement.style.setProperty('--overflow-distance', `${distance}px`);
+        scrollingArtistElement.classList.remove('scrollable');
+        void scrollingArtistElement.offsetWidth;
+        scrollingArtistElement.classList.add('scrollable');
+      }
+    }
+  }, 0);
+}
+
+// 별도의 재시작 플래그 선언
+let marqueeRestartingSong = false;
+let marqueeRestartingArtist = false;
+
+// 이름 있는 이벤트 핸들러들
+function handleSongNameAnimationEnd() {
+  // 애니메이션 종료 시 이벤트 리스너를 먼저 제거합니다.
+  scrollingSongNameElement.removeEventListener('animationend', handleSongNameAnimationEnd);
+  // 10초 대기 후 애니메이션을 재시작
+  setTimeout(() => {
+    scrollingSongNameElement.classList.remove('scrollable');
+    // 강제 reflow로 애니메이션 리셋
+    void scrollingSongNameElement.offsetWidth;
+    scrollingSongNameElement.classList.add('scrollable');
+    // 새로 애니메이션 종료 이벤트를 등록
+    scrollingSongNameElement.addEventListener('animationend', handleSongNameAnimationEnd);
+  }, 10000);
+}
+
+function handleArtistAnimationEnd() {
+  scrollingArtistElement.removeEventListener('animationend', handleArtistAnimationEnd);
+  setTimeout(() => {
+    scrollingArtistElement.classList.remove('scrollable');
+    void scrollingArtistElement.offsetWidth;
+    scrollingArtistElement.classList.add('scrollable');
+    scrollingArtistElement.addEventListener('animationend', handleArtistAnimationEnd);
+  }, 10000);
+}
 
 	// ✅ 시간 포맷 변환 (초 → mm:ss)
 	function formatTime(seconds) {
@@ -164,6 +236,34 @@ let user = { name: '', picture: '' };
 		 }
 	}
 
+	// 이전 곡 재생 함수 추가
+function playPreviousTrack() {
+  console.log('⏮️ playPreviousTrack() 호출됨!');
+  
+  // 현재 재생시간을 확인 (currentTime은 startProgressUpdate()에서 업데이트됨)
+  if (currentTime > 3) {
+    // 현재 재생시간이 3초 이상이면 현재 곡을 처음(0초)으로 되돌림
+    console.log('현재 재생시간이 3초 이상이므로, 현재 곡을 처음으로 되돌립니다.');
+    if (youtubePlayer && youtubePlayer.seekTo) {
+      youtubePlayer.seekTo(0, true);
+    }
+  } else {
+    // 재생시간이 3초 이하이면 이전 곡을 재생
+    const tracks = $searchResults;
+    console.log('현재 트랙 인덱스:', currentTrackIndex);
+    if (currentTrackIndex > 0) {
+      const prevTrack = tracks[currentTrackIndex - 1];
+      console.log('이전 재생할 트랙:', prevTrack);
+      playTrack(prevTrack, currentTrackIndex - 1);
+    } else {
+      console.log('이전 곡이 없습니다. 현재 곡을 처음으로 되돌립니다.');
+      if (youtubePlayer && youtubePlayer.seekTo) {
+        youtubePlayer.seekTo(0, true);
+      }
+    }
+  }
+}
+
 	// ✅ 현재 재생 시간을 업데이트하는 함수
 	function startProgressUpdate() {
 		 clearInterval(interval);
@@ -250,6 +350,28 @@ let user = { name: '', picture: '' };
 		 console.log('🚀 앱 시작...');
 		 loadYouTubeAPI();
 		 window.addEventListener('playTrack', handlePlayTrack);
+
+	 // 추가: 플레이어의 곡명/가수명 영역 길이 감지 및 animationend 이벤트 등록
+	 setTimeout(() => {
+    if (scrollingSongNameElement) {
+      isSongNameScrollable = scrollingSongNameElement.scrollWidth > scrollingSongNameElement.clientWidth;
+      scrollingSongNameElement.addEventListener('animationend', handleSongNameAnimationEnd);
+    }
+    if (scrollingArtistElement) {
+      isArtistScrollable = scrollingArtistElement.scrollWidth > scrollingArtistElement.clientWidth;
+      scrollingArtistElement.addEventListener('animationend', handleArtistAnimationEnd);
+    }
+  }, 0);
+
+  return () => {
+    window.removeEventListener('playTrack', handlePlayTrack);
+    if (scrollingSongNameElement) {
+      scrollingSongNameElement.removeEventListener('animationend', handleSongNameAnimationEnd);
+    }
+    if (scrollingArtistElement) {
+      scrollingArtistElement.removeEventListener('animationend', handleArtistAnimationEnd);
+    }
+  };
 	});
 </script>
 
@@ -302,23 +424,35 @@ let user = { name: '', picture: '' };
 
 	<!-- ✅ 전역 플레이어 -->
 	<div class="player">
-		 {#if $currentTrack.name}
 		 <a href="/song" tabindex="0" role="button" on:click|preventDefault={navigateToSongPage}>
 				<img
 					 src={$currentTrack?.albumImage || ''}
 					 alt="Album Cover"
 					 class="player-album-cover"
 				/>
-		 </a>         <div class="player-track-info">
-					 <strong>{$currentTrack.name}</strong>
-					 <p>{$currentTrack.artist}</p>
-				</div>
+		 </a>        
+		 <div class="player-track-info">
+			<div class="scrolling-text song-name" 
+					 bind:this={scrollingSongNameElement} 
+					 class:scrollable={isSongNameScrollable}>
+				<strong>{$currentTrack.name}</strong>
+			</div>
+			<div class="scrolling-text artist-name" 
+					 bind:this={scrollingArtistElement} 
+					 class:scrollable={isArtistScrollable}>
+				<p>{$currentTrack.artist}</p>
+			</div>
+		</div>
+				
 				<!-- ✅ 현재 재생 시간 / 총 길이 표시 -->
 				<div class="wrap-time">
 					 <div class="time-info">
+						<button on:click={playPreviousTrack}>⏮️</button>
 							<button on:click={togglePause}>
 								 {isPlaying ? '⏸️' : '▶️'}
 							</button>
+							<button on:click={playNextTrack}>⏭️</button>
+
 							<span>{formatTime(currentTime)}</span>
 							<input
 								 type="range"
@@ -345,7 +479,6 @@ let user = { name: '', picture: '' };
 				class="volume-slider"
 			/>
 		</div>
-		 {/if}
 	</div>
 
 	<div id="youtube-player"></div>
@@ -493,12 +626,32 @@ let user = { name: '', picture: '' };
 	}
 
 	.player-track-info {
-		 flex-grow: 1;
-		 display: flex;
-		 flex-direction: column;
-		 max-width: 150px;
-	}
+  width: 150px;             /* 고정 너비 */
+  overflow: hidden;         /* 넘치는 텍스트 숨김 */
+  white-space: nowrap;      /* 한 줄로 표시 */
+}
 
+.scrolling-text {
+  white-space: nowrap;
+}
+/* 'scrollable' 클래스가 있을 때만 marquee 애니메이션 적용 */
+/* 'scrollable' 클래스가 있을 때만 marquee 애니메이션 적용, 1회 실행 */
+.scrolling-text.scrollable {
+  /* 전체 애니메이션 시간은 CSS 변수로 계산된 값, 1회 실행 */
+  animation: marquee var(--marquee-duration, 10s) linear 1;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  80% {
+    transform: translateX(calc(-1 * var(--overflow-distance)));
+  }
+  100% {
+    transform: translateX(calc(-1 * var(--overflow-distance)));
+  }
+}
 	.player strong {
 		 font-size: 14px;
 	}

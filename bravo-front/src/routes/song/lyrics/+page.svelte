@@ -1,3 +1,5 @@
+<!-- /bravo-front/src/routes/song/lyrics/+page.svelte -->
+
 <script>
   import { getContext, onMount, tick, createEventDispatcher } from 'svelte';
   import { writable } from 'svelte/store';
@@ -9,13 +11,19 @@
   currentTimeStore.subscribe(value => {
     currentTimeVal = value;
   });
-  
+  let previousTrackKey = null;
+
   let lyrics = "가사를 불러오는 중...";
   let translatedLyrics = "";
   let isTranslating = false;
   let refining = false;
   let parsedLyrics = null;
   
+//자동 스크롤 해제 부분
+let autoScrollPaused = false;
+let autoScrollPauseTimeout;
+
+
   $: trackKey = $currentTrack && $currentTrack.name ? `${$currentTrack.name}-${$currentTrack.artist}` : "";
   $: originalLines = lyrics.split('\n').filter(line => line.trim() !== '');
   $: translatedLines = translatedLyrics.split('\n').filter(line => line.trim() !== '');
@@ -41,7 +49,7 @@
     }
   }
   
-  $: if (activeLineIndex !== -1) {
+  $: if (activeLineIndex !== -1 && !autoScrollPaused) {
     tick().then(() => {
       const highlightedEl = lyricsContainer.querySelector('.lyrics-content.highlight');
       if (highlightedEl) {
@@ -149,6 +157,16 @@
   
   const unsubscribe = currentTrack.subscribe(track => {
     if (track && track.name && track.artist) {
+			const newTrackKey = `${track.name}-${track.artist}`;
+    // 이전 트랙이 있다면(즉, 처음이 아니라면) 새 트랙과 다를 경우 가사창을 닫습니다.
+    if (previousTrackKey && previousTrackKey !== newTrackKey) {
+      showLyrics.set(false);
+    }
+    previousTrackKey = newTrackKey;
+
+			translatedLyrics = "";
+    isTranslating = false;
+    refining = false;
       fetchLyrics(track.name, track.artist);
       const cachedTranslated = sessionStorage.getItem(`translated-${track.name}-${track.artist}`);
       if (cachedTranslated) {
@@ -156,6 +174,17 @@
       }
     }
   });
+
+	//자동 스크롤 제어 함수
+	function pauseAutoScroll() {
+  autoScrollPaused = true;
+  if (autoScrollPauseTimeout) {
+    clearTimeout(autoScrollPauseTimeout);
+  }
+  autoScrollPauseTimeout = setTimeout(() => {
+    autoScrollPaused = false;
+  }, 3000); // 5000ms = 5초 후에 자동 스크롤 재개
+}
   
   function updateParagraphOpacity() {
     const paragraphs = lyricsContainer.querySelectorAll('.lyrics-content');
@@ -181,12 +210,27 @@
     const songPage = document.querySelector('.song-page');
     if (songPage) {
       songPage.addEventListener('scroll', updateParagraphOpacity);
+			songPage.addEventListener('scroll', pauseAutoScroll);
+
     }
+
+		 // lyricsContainer 관련 이벤트 등록
+		 const handleUserScroll = () => {
+    pauseAutoScroll();
+  };
+  if (lyricsContainer) {
+    lyricsContainer.addEventListener('scroll', handleUserScroll);
+  }
     updateParagraphOpacity();
-    return () => {
-      if (songPage) {
-        songPage.removeEventListener('scroll', updateParagraphOpacity);
-      }
+  // 정리(cleanup) 함수
+  return () => {
+    if (songPage) {
+      songPage.removeEventListener('scroll', updateParagraphOpacity);
+      songPage.removeEventListener('scroll', pauseAutoScroll);
+    }
+    if (lyricsContainer) {
+      lyricsContainer.removeEventListener('scroll', handleUserScroll);
+    }
     };
   });
   

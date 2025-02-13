@@ -1,3 +1,5 @@
+<!-- /bravo-front/src/routes/song/+page.svelte -->
+
 <script>
   import { getContext, onMount, tick, onDestroy } from 'svelte';
   import { writable } from 'svelte/store';

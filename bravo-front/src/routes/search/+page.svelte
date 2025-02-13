@@ -83,7 +83,7 @@
 		background-color: #626262;
 		color: white; /* 입력한 글자 색상 */
 		transition: border 0.5s ease, background-color 0.5s ease; /* 테두리 전환 효과 추가 */
-
+		cursor: pointer;
 
 	}
 	input::placeholder {
