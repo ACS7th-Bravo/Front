@@ -17,8 +17,9 @@
   let parsedLyrics = null;
   
   $: trackKey = $currentTrack && $currentTrack.name ? `${$currentTrack.name}-${$currentTrack.artist}` : "";
-  $: originalLines = lyrics.split('\n').filter(line => line.trim() !== '');
-  $: translatedLines = translatedLyrics.split('\n').filter(line => line.trim() !== '');
+  // 빈 줄도 보존하기 위해 filter를 제거합니다.
+  $: originalLines = lyrics.split('\n');
+  $: translatedLines = translatedLyrics.split('\n');
   
   function convertTimeToSeconds(timeStr) {
     const parts = timeStr.split(':');
@@ -50,14 +51,8 @@
     });
   }
   
-  // 준현 수정 - fetchLyrics 영문 이름으로 조회
   async function fetchLyrics(song, artist) {
-    if (!song || !artist) return;
-
-    const trackName = $currentTrack.englishTrackName || song;
-    const artistName = $currentTrack.englishArtistName || artist;
-
-    const cacheKey = `lyrics-${trackName}-${artistName}`;
+    const cacheKey = `lyrics-${song}-${artist}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       const cachedData = JSON.parse(cached);
@@ -65,9 +60,8 @@
       parsedLyrics = cachedData.parsedLyrics;
       return;
     }
-
     try {
-      const res = await fetch(`${backendUrl}/api/lyrics?song=${encodeURIComponent(trackName)}&artist=${encodeURIComponent(artistName)}`, {
+      const res = await fetch(`${backendUrl}/api/lyrics?song=${encodeURIComponent(song)}&artist=${encodeURIComponent(artist)}`, {
         headers: {
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': '69420'
@@ -79,7 +73,7 @@
         if (data.parsedLyrics) {
           parsedLyrics = data.parsedLyrics;
         }
-        sessionStorage.setItem(cacheKey, JSON.stringify({ lyrics, parsedLyrics }));
+				sessionStorage.setItem(cacheKey, JSON.stringify({ lyrics, parsedLyrics }));
       } else {
         lyrics = "가사를 찾을 수 없습니다.";
       }
@@ -88,7 +82,6 @@
       lyrics = "가사를 불러오는데 실패했습니다.";
     }
   }
-
   
   const dispatch = createEventDispatcher();
   
@@ -96,7 +89,6 @@
     if (translatedLyrics) {
       translatedLyrics = "";
       sessionStorage.removeItem(`translated-${trackKey}`);
-      // 상태 변화 이벤트 디스패치
       dispatch('update', { isTranslating, refining });
       return;
     }
@@ -197,10 +189,10 @@
     };
   });
   
-  // 기존 export 대신 이벤트로 상태를 부모에게 알림
   export { requestTranslation };
 </script>
 
+<!-- 준현 수정 -->
 <div class="lyrics-container" bind:this={lyricsContainer}>
   {#if parsedLyrics}
     {#each parsedLyrics as line, i}
@@ -229,7 +221,6 @@
       <p class="lyrics-content">{lyrics}</p>
     {/if}
   {/if}
-  <!-- 기존 번역 버튼과 인디케이터는 삭제 (부모로 옮겼음) -->
 </div>
 
 <style>
