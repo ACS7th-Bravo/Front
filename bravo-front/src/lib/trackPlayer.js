@@ -6,7 +6,7 @@ import { get } from 'svelte/store';
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 // ✅ YouTube에서 videoId 가져오기 (백엔드 호출)
-async function getYouTubeVideo(trackName, artistName) {
+export async function getYouTubeVideo(trackName, artistName) {
 	const url = `${backendUrl}/api/youtube/search?trackName=${encodeURIComponent(trackName)}&artistName=${encodeURIComponent(artistName)}`;
 	console.log('검색한 키워드: ', `${trackName} ${artistName} official audio`);
 	console.log('백엔드 유튜브 검색 url은: ', url);
@@ -29,24 +29,38 @@ async function getYouTubeVideo(trackName, artistName) {
 	}
 }
 
+// 준현 수정 - playTrack 영문 이름으로 조회
 // ✅ 트랙 재생 함수
 export async function playTrack(track, index) {
-	// 로그인이 되어 있지 않으면 재생 기능을 막음. 2/11 추가
 	if (!localStorage.getItem('jwt_token')) {
 		alert('로그인 후 음악을 재생할 수 있습니다.');
 		return;
 	}
-	console.log(`🎵 재생 요청: ${track.name} - ${track.artists[0].name}`);
 
-	const videoId = await getYouTubeVideo(track.name, track.artists[0].name);
+	if (!track) {
+		console.error('❌ 재생할 트랙 정보가 없습니다.', track);
+		alert('❌ 재생할 수 없는 트랙입니다.');
+		return;
+	}
+
+	console.log('▶️ track 정보: ', track);
+
+	// ✅ 영어 제목 & 영어 아티스트명을 우선적으로 사용
+	const trackName = track.englishTrackName || track.name || 'Unknown Track';
+	const artistName = track.englishArtistName
+		? track.englishArtistName
+		: track.artists
+			? track.artists.map((a) => a.name).join(', ')
+			: track.artist || 'Unknown Artist';
+
+	console.log('🎵 English Name: ', trackName);
+	console.log('🎵 English Artist: ', artistName);
+
+	const videoId = await getYouTubeVideo(trackName, artistName);
 	console.log(`▶️ 찾은 YouTube Video ID:`, videoId);
 
 	if (videoId) {
-		window.dispatchEvent(
-			new CustomEvent('playTrack', {
-				detail: { videoId, track, index }
-			})
-		);
+		window.dispatchEvent(new CustomEvent('playTrack', { detail: { videoId, track, index } }));
 	} else {
 		alert('❌ YouTube에서 영상을 찾을 수 없습니다.');
 	}

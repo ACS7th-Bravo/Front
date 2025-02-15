@@ -5,6 +5,7 @@
 	import { searchQuery, searchResults } from '$lib/searchStore.js';
 	import { get } from 'svelte/store';
 	import { playTrack } from '$lib/trackPlayer.js';
+	import { playlist } from '$lib/playlistStore.js'; // 플레이리스트 store 임포트
 
 	// .env 파일에 설정된 백엔드 URL을 사용합니다.
 	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
@@ -17,12 +18,11 @@
 			const res = await fetch(
 				`${backendUrl}/api/spotify/search?q=${encodeURIComponent(get(searchQuery))}`,
 				{
-				headers: {
-					'Content-Type': 'application/json', // ✅ JSON 요청
-					'ngrok-skip-browser-warning': '69420', // ✅ ngrok 보안 경고 우회
-				},
-			}
-				
+					headers: {
+						'Content-Type': 'application/json', // ✅ JSON 요청
+						'ngrok-skip-browser-warning': '69420' // ✅ ngrok 보안 경고 우회
+					}
+				}
 			);
 			if (!res.ok) throw new Error(`HTTP 오류! 상태 코드: ${res.status}`);
 			const data = await res.json();
@@ -30,6 +30,13 @@
 		} catch (error) {
 			console.error('❌ Spotify 검색 요청 실패:', error);
 		}
+	}
+
+	// ✅ 플레이리스트에 트랙 추가하는 함수 (필요에 따라 수정)
+	function addToPlaylist(track, index) {
+		// 기존 배열에 새 트랙 추가
+		playlist.update((tracks) => [...tracks, track]);
+		console.log('플레이리스트에 추가:', track);
 	}
 
 	onMount(searchTracks);
@@ -45,17 +52,23 @@
 	<button on:click={searchTracks}>검색</button>
 </div>
 
-{#if $searchResults.length > 0}
+{#if $searchResults && Array.isArray($searchResults) && $searchResults.length > 0}
 	<div class="track-list">
 		<h3>검색 결과:</h3>
 		{#each $searchResults as track, index}
 			<div class="track">
-				<img src={track.album.images[0]?.url} alt="Album Cover" />
+				<img src={track.imageUrl || '/default-album.png'} alt="Album Cover" />
 				<div>
 					<strong>{track.name}</strong>
-					<p>{track.artists.map((artist: any) => artist.name).join(', ')}</p>
+					<p>{track.artist || '알 수 없음'}</p>
 				</div>
-				<button on:click={() => playTrack(track, index)}>▶️ 재생</button>
+				<!-- 버튼들을 감싸는 div 추가 -->
+				<div class="button-container">
+					<button class="playlist-add-btn" on:click={() => addToPlaylist(track, index)}>
+						플레이리스트 추가
+					</button>
+					<button on:click={() => playTrack(track, index)}>▶️ 재생</button>
+				</div>
 			</div>
 		{/each}
 	</div>
@@ -68,7 +81,6 @@
 		margin-bottom: 20px;
 		display: flex;
 		flex-direction: row;
-		
 	}
 	input {
 		padding: 10px;
@@ -82,24 +94,24 @@
 		margin-left: 5px;
 		background-color: #626262;
 		color: white; /* 입력한 글자 색상 */
-		transition: border 0.5s ease, background-color 0.5s ease; /* 테두리 전환 효과 추가 */
+		transition:
+			border 0.5s ease,
+			background-color 0.5s ease; /* 테두리 전환 효과 추가 */
 		cursor: pointer;
-
 	}
 	input::placeholder {
-  color: white; /* placeholder 글자 색상 */
-}
+		color: white; /* placeholder 글자 색상 */
+	}
 
-input:hover{
-	background-color: #7c7c7c;
+	input:hover {
+		background-color: #7c7c7c;
+	}
 
-}
-
-input:focus {
-  outline: none;
-  border: 2px solid white;
-	background-color: #7c7c7c;
-}
+	input:focus {
+		outline: none;
+		border: 2px solid white;
+		background-color: #7c7c7c;
+	}
 	.track-list {
 		max-width: 100%;
 		text-align: left;
@@ -110,7 +122,6 @@ input:focus {
 		padding: 10px;
 		border-bottom: 1px solid #ddd;
 		transition: background 0.2s;
-		
 	}
 	.track:hover {
 		background: #f4f4f4;
@@ -121,10 +132,9 @@ input:focus {
 		height: 50px;
 		margin-right: 10px;
 		box-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
-
 	}
 
-	h3{
+	h3 {
 		margin-left: 5px;
 	}
 	.search-container button {
@@ -156,5 +166,20 @@ input:focus {
 	}
 	.track button:hover {
 		background-color: hotpink;
+	}
+
+	/* 플레이리스트 추가 버튼에는 margin-left auto를 제거해 왼쪽에 위치시키고, 값 간격을 조정 */
+	.track .playlist-add-btn {
+		margin-left: auto;
+		margin-right: 8px;
+	}
+	.track .playlist-add-btn:hover {
+		background: hotpink;
+	}
+	/* 버튼 컨테이너 추가 */
+	.track .button-container {
+		display: flex;
+		gap: 10px; /* 버튼 간 간격 */
+		margin-left: auto; /* 버튼들을 오른쪽으로 정렬 */
 	}
 </style>

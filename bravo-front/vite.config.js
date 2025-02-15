@@ -15,6 +15,6 @@ export default defineConfig({
 			}
 		},
 
-		allowedHosts: ['fair-readily-viper.ngrok-free.app']
+		allowedHosts: ['valid-elephant-separately.ngrok-free.app']
 	}
 });

@@ -27,6 +27,7 @@
 		"vite": "^6.0.0"
 	},
 	"dependencies": {
+		"colorthief": "^2.6.0",
 		"jwt-decode": "^4.0.0"
 	}
 }
