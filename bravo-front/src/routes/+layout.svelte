@@ -433,8 +433,8 @@
 				tracks: $playlist.map((track) => ({
 					trackId: track.id,
 					title: track.name,
-					artist: track.artists.map((a) => a.name).join(', '),
-					albumImage: track.album.images[0]?.url || ''
+					artist: track.artists?.map((a) => a.name).join(', ') || track.artist || '알 수 없음',
+					albumImage: track.album?.images[0]?.url || track.imageUrl || ''
 				}))
 			};
 			fetch(`${backendUrl}/api/playlist`, {
@@ -522,9 +522,10 @@
 				<ul>
 					{#each $playlist as track, index}
 						<li class="playlist-track">
-							<img src={track.album.images[0]?.url} alt="Album Cover" width="30" height="30" />
+							<img src={track.album?.images[0]?.url || track.imageUrl || '/default-album.png'} alt="Album Cover" width="30" height="30" />
 							<span class="track-info"
-								>{track.name} - {track.artists.map((artist) => artist.name).join(', ')}</span
+								>		{track.name} - {track.artists?.map((artist) => artist.name).join(', ') || track.artist || '알 수 없음'}
+								</span
 							>
 							<!-- 삭제 버튼을 오른쪽에 고정 -->
 							<button class="delete-btn" on:click={() => removeFromPlaylist(index)}>-</button>

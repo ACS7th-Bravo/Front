@@ -52,27 +52,26 @@
 	<button on:click={searchTracks}>검색</button>
 </div>
 
-{#if $searchResults && Array.isArray($searchResults) && $searchResults.length > 0}
-	<div class="track-list">
-		<h3>검색 결과:</h3>
-		{#each $searchResults as track, index}
-			<div class="track">
-				<img src={track.imageUrl || '/default-album.png'} alt="Album Cover" />
-				<div>
-					<strong>{track.name}</strong>
-					<p>{track.artist || '알 수 없음'}</p>
+{#if $searchResults.length > 0}
+<div class="track-list">
+	 <h3>검색 결과:</h3>
+	 {#each $searchResults as track, index}
+		 <div class="track">
+			<img src={track.album?.images[0]?.url || track.imageUrl || '/default-album.png'} alt="Album Cover" />
+			<div>
+				 <strong>{track.name}</strong>
+				 <p>{track.artists?.map((artist: any) => artist.name).join(', ') || track.artist || '알 수 없음'}</p>
 				</div>
-				<!-- 버튼들을 감싸는 div 추가 -->
-				<div class="button-container">
-					<button class="playlist-add-btn" on:click={() => addToPlaylist(track, index)}>
-						플레이리스트 추가
-					</button>
-					<button on:click={() => playTrack(track, index)}>▶️ 재생</button>
-				</div>
-			</div>
-		{/each}
-	</div>
+			 <button class="playlist-add-btn" on:click={() => addToPlaylist(track, index)}
+				 >플레이리스트 추가</button
+			 >
+
+			 <button on:click={() => playTrack(track, index)}>▶️ 재생</button>
+		 </div>
+	 {/each}
+</div>
 {/if}
+
 
 <style>
 	.search-container {
@@ -175,11 +174,5 @@
 	}
 	.track .playlist-add-btn:hover {
 		background: hotpink;
-	}
-	/* 버튼 컨테이너 추가 */
-	.track .button-container {
-		display: flex;
-		gap: 10px; /* 버튼 간 간격 */
-		margin-left: auto; /* 버튼들을 오른쪽으로 정렬 */
 	}
 </style>

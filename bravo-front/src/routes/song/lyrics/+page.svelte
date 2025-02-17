@@ -14,11 +14,11 @@
 	});
 	let previousTrackKey = null;
 
-	$: lyrics = '가사를 불러오는 중...';
+	let lyrics = '가사를 불러오는 중...';
 	let translatedLyrics = '';
 	let isTranslating = false;
 	let refining = false;
-	$: parsedLyrics = null;
+	let parsedLyrics = null;
 
 	//자동 스크롤 해제 부분
 	let autoScrollPaused = false;
@@ -148,7 +148,7 @@
 						if (line.startsWith('data: ')) {
 							const jsonStr = line.slice(6);
 							const data = JSON.parse(jsonStr);
-							if (data.stage === 'papago') {
+							if (data.stage === 'amazon') {
 								translatedLyrics = data.translation;
 								sessionStorage.setItem(`translated-${trackKey}`, translatedLyrics);
 							} else if (data.stage === 'update') {
@@ -181,6 +181,8 @@
 			// 이전 트랙이 있다면(즉, 처음이 아니라면) 새 트랙과 다를 경우 가사창을 닫습니다.
 			if (previousTrackKey && previousTrackKey !== newTrackKey) {
 				showLyrics.set(false);
+				lyrics = '가사를 불러오는 중...';
+
 			}
 			previousTrackKey = newTrackKey;
 
