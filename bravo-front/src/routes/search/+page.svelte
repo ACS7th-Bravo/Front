@@ -35,7 +35,7 @@
 	// ✅ 플레이리스트에 트랙 추가하는 함수 (필요에 따라 수정)
 	function addToPlaylist(track, index) {
 		// 기존 배열에 새 트랙 추가
-		playlist.update((tracks) => [...tracks, track]);
+		playlist.update((tracks) => [track, ...tracks]);
 		console.log('플레이리스트에 추가:', track);
 	}
 

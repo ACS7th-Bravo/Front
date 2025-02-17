@@ -6,6 +6,10 @@
 	import { getYouTubeVideo } from '$lib/trackPlayer.js';
 
 	const currentUser = getContext("currentUser");
+let userName = "";
+if (currentUser && currentUser.name) {
+		 userName = currentUser.name;
+	}
 	let userEmail = "";
 	if (currentUser && currentUser.email) {
 		 userEmail = currentUser.email;
@@ -71,7 +75,7 @@ onMount(async () => {
 	</div>
 {:else}
 	<div class="playlist-manager-container">
-		 <h2>{userEmail}의 플레이리스트</h2>
+		 <h2>{userName}의 플레이리스트</h2>
 		 {#if $playlistManager.length > 0}
 				<div class="playlist-group-list">
 					 {#each $playlistManager as playlist (playlist._id)}

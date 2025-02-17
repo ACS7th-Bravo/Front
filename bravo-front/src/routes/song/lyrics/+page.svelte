@@ -70,7 +70,7 @@
 		});
 	}
 
-	async function fetchLyrics(song, artist) {
+	async function fetchLyrics(song, artist, englishTrackName, englishArtistName) {
 		const cacheKey = `lyrics-${song}-${artist}`;
 
 		// sessionStorage를 사용하기 전에 브라우저 환경인지 확인
@@ -86,7 +86,7 @@
 
 		try {
 			const res = await fetch(
-				`${backendUrl}/api/lyrics?song=${encodeURIComponent(song)}&artist=${encodeURIComponent(artist)}`,
+				`${backendUrl}/api/lyrics?song=${encodeURIComponent(song)}&artist=${encodeURIComponent(artist)}&englishTrackName=${encodeURIComponent(englishTrackName || '')}&englishArtistName=${encodeURIComponent(englishArtistName || '')}`,
 				{
 					headers: {
 						'Content-Type': 'application/json',
@@ -154,7 +154,17 @@
 							} else if (data.stage === 'update') {
 								refining = true;
 							} else if (data.stage === 'refined') {
-								translatedLyrics = data.translation;
+								/**
+								 *  만약 백엔드가 "이미 한국어"라 판단해 원문만 반환한 경우,
+								 *  data.translation === lyrics 일 수 있다.
+								 *  이런 경우, 중복 표시를 막기 위해 translatedLyrics를 ''로 둔다.
+								 */
+								 if (data.translation === lyrics) {
+									console.log("🔔 원문 그대로 반환됨 → 번역 없이 표시");
+									translatedLyrics = '';
+								} else {
+									translatedLyrics = data.translation;
+								}
 								refining = false;
 								sessionStorage.setItem(`translated-${trackKey}`, translatedLyrics);
 							} else if (data.stage === 'error') {
@@ -190,7 +200,7 @@
 			isTranslating = false;
 			refining = false;
 
-			fetchLyrics(track.name, track.artist);
+			fetchLyrics(track.name, track.artist, track.englishTrackName, track.englishArtistName);
 
 			const cachedTranslated = sessionStorage.getItem(`translated-${track.name}-${track.artist}`);
 			if (cachedTranslated) {
