@@ -1,3 +1,5 @@
+// /bravo-front/src/lib/playlistManagerStore.js
+
 import { writable } from 'svelte/store';
 
 /*

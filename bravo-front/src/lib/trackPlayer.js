@@ -5,6 +5,32 @@ import { get } from 'svelte/store';
 // 만약 환경변수가 없다면 기본값 http://localhost:3001 을 사용합니다.
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
+// [추가된 부분] : DB에서 streaming_id를 가져오는 함수
+// 이 함수는 DB(백엔드 API)를 통해서 해당 track_id를 가진 트랙의 streaming_id를 가져옵니다.
+// streaming_id가 있다면 DB에서 가져온 것으로 간주하고 반환합니다.
+async function getStreamingIdFromDB(trackId) {
+	try {
+		const response = await fetch(`${backendUrl}/api/track?track_id=${trackId}`, {
+			headers: {
+				'Content-Type': 'application/json',
+				'ngrok-skip-browser-warning': '69420' // ✅ ngrok 보안 경고 우회
+			}
+		});
+		if (response.ok) {
+			const data = await response.json();
+			// data.streaming_id가 존재하면 DB에서 가져온 streaming_id임
+			if (data && data.streaming_id) {
+				console.log('🔍 DB에서 가져온 streaming_id:', data.streaming_id);
+				return data.streaming_id; // DB에서 가져온 streaming_id
+			}
+		}
+	} catch (error) {
+		console.error('DB에서 streaming_id 가져오기 실패:', error);
+	}
+	return null;
+}
+// ======================
+
 // ✅ YouTube에서 videoId 가져오기 (백엔드 호출)
 export async function getYouTubeVideo(trackName, artistName) {
 	const url = `${backendUrl}/api/youtube/search?trackName=${encodeURIComponent(trackName)}&artistName=${encodeURIComponent(artistName)}`;
@@ -56,8 +82,17 @@ export async function playTrack(track, index) {
 	console.log('🎵 English Name: ', trackName);
 	console.log('🎵 English Artist: ', artistName);
 
-	const videoId = await getYouTubeVideo(trackName, artistName);
-	console.log(`▶️ 찾은 YouTube Video ID:`, videoId);
+	let videoId = await getStreamingIdFromDB(track.id);
+	if (videoId) {
+		console.log('✅ DB에서 가져온 streaming_id 사용:', videoId);
+		console.log('※ 이 streaming_id는 DB에서 가져온 것입니다.');
+	} else {
+		// DB에 해당 트랙의 streaming_id가 없으면 기존대로 YouTube API를 호출합니다.
+		videoId = await getYouTubeVideo(trackName, artistName);
+		console.log('✅ YouTube API를 통해 가져온 streaming_id:', videoId);
+		console.log('※ 이 streaming_id는 YouTube API에서 가져온 것입니다.');
+	}
+	// ============================================================
 
 	if (videoId) {
 		window.dispatchEvent(new CustomEvent('playTrack', { detail: { videoId, track, index } }));
