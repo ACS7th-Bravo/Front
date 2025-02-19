@@ -90,10 +90,10 @@
 								...track,
 								// 검색 결과에서는 id, name, artists, imageUrl 등이 이미 있음
 								// 필요한 경우 영어 정보도 포함 (필요하다면)
-								englishTrackName: track.name,
-								englishArtistName: track.artists
-									? track.artists.map((a) => a.name).join(', ')
-									: track.artist,
+								englishTrackName: track.englishTrackName || track.name,
+								englishArtistName:
+									track.englishArtistName ||
+									(track.artists ? track.artists.map((a) => a.name).join(', ') : track.artist),
 								source: 'search'
 							};
 							// [변경됨: 현재 재생 큐를 검색 결과 배열(포맷된 배열)로 업데이트]
@@ -102,9 +102,13 @@
 									id: t.id,
 									name: t.name,
 									artist: t.artists ? t.artists.map((a) => a.name).join(', ') : t.artist,
+									artist_id: t.artist_id,
+									album_id: t.album_id,
 									imageUrl: t.album?.images[0]?.url || t.imageUrl,
-									englishTrackName: t.name,
-									englishArtistName: t.artists ? t.artists.map((a) => a.name).join(', ') : t.artist,
+									englishTrackName: t.englishTrackName || t.name, // 영어 값이 있으면 사용
+									englishArtistName:
+										t.englishArtistName ||
+										(t.artists ? t.artists.map((a) => a.name).join(', ') : t.artist),
 									source: 'search'
 								}))
 							);

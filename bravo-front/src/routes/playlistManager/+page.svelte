@@ -1,9 +1,11 @@
-<!-- /bravo-front/src/routes/playlistManager/+page.svelte -->
-
 <script>
 	import { onMount, getContext } from 'svelte';
 	import { playlistManager } from '$lib/playlistManagerStore.js';
-	import { playTrack, getYouTubeVideo } from '$lib/trackPlayer.js';
+	// 전역 재생 큐는 이제 사용하지 않습니다.
+	// import { playTrack } from '$lib/trackPlayer.js';
+
+	// 새로 추가: 페이지 이동을 위한 goto 함수
+	import { goto } from '$app/navigation';
 
 	const currentUser = getContext('currentUser');
 	let userName = '';
@@ -16,15 +18,7 @@
 	}
 	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
-	let expandedGroups = {};
-
-	function toggleGroup(playlistId) {
-		expandedGroups[playlistId] = !expandedGroups[playlistId];
-	}
-
-	// [변경됨: 전역 재생 큐 context를 컴포넌트 초기화 시 가져와서 변수에 저장]
-	const currentQueue = getContext('currentQueue');
-
+	// 플레이리스트 데이터를 불러오는 onMount 함수 (기존 코드 재사용)
 	onMount(async () => {
 		if (userEmail) {
 			try {
@@ -39,7 +33,7 @@
 					throw new Error('플레이리스트 조회 실패');
 				}
 				const text = await res.text();
-				console.log('응답 텍스트:', text);
+				console.log('플레이리스트 로드 응답 텍스트:', text);
 				const data = JSON.parse(text);
 				playlistManager.set(data);
 			} catch (error) {
@@ -47,6 +41,12 @@
 			}
 		}
 	});
+
+	// 플레이리스트 썸네일 클릭 시 재생 대신 상세 페이지로 이동하도록 수정 (동적 경로 대신 쿼리 파라미터 사용)
+	function goToPlaylistDetail(playlist) {
+		// 예: /playlistDetail?playlistId={playlist._id} 로 이동
+		goto(`/playlistDetail?playlistId=${playlist._id}`);
+	}
 </script>
 
 {#if !userEmail}
@@ -57,79 +57,33 @@
 	<div class="playlist-manager-container">
 		<h2>{userName}의 플레이리스트</h2>
 		{#if $playlistManager.length > 0}
-			<div class="playlist-group-list">
+			<div class="playlist-grid">
 				{#each $playlistManager as playlist (playlist._id)}
-					<div class="playlist-group">
-						<button
-							type="button"
-							on:click={() => toggleGroup(playlist._id)}
-							class="playlist-group-header"
-						>
-							<span>{playlist.name}</span>
-							<span class="toggle-icon">
-								{#if expandedGroups[playlist._id]}
-									&#9660;
-								{:else}
-									&#9658;
-								{/if}
-							</span>
-						</button>
-						{#if expandedGroups[playlist._id]}
-							<div class="playlist-tracks">
-								{#each playlist.tracks as track}
-									<div class="track">
-										<!-- 변경된 부분: DB 필드명 album_image, track_name, artist_name 사용 -->
-										<img src={track.album_image} alt={track.track_name} class="track-album" />
-										<div class="track-info">
-											<strong>{track.track_name}</strong>
-											<p>{track.artist_name}</p>
-										</div>
-										<button
-											type="button"
-											on:click={() => {
-												// [변경됨: 트랙 정보 재구성]
-												const formattedTrack = {
-													...track,
-													// playTrack() 내부에서는 track.id, track.name, track.artist, track.imageUrl 사용
-													id: track.track_id, // 필수: track_id
-													name: track.track_name, // 필수: track_name
-													artist: track.artist_name, // 필수: artist_name
-													artist_id: track.artist_id, // 필수: artist_id
-													album_id: track.album_id, // 필수: album_id
-													imageUrl: track.album_image, // 필수: album_image
-													englishTrackName: track.track_name, // (필요 시)
-													englishArtistName: track.artist_name,
-													source: 'playlist'
-												};
-
-												// 현재 재생 큐를 이 플레이리스트의 전체 트랙 배열로 설정
-												currentQueue.set(
-													playlist.tracks.map((t) => ({
-														id: t.track_id,
-														name: t.track_name,
-														artist: t.artist_name,
-														artist_id: t.artist_id,
-														album_id: t.album_id,
-														imageUrl: t.album_image,
-														englishTrackName: t.track_name,
-														englishArtistName: t.artist_name,
-														source: 'playlist'
-													}))
-												);
-												// 플레이리스트 내에서 해당 트랙의 인덱스를 찾음
-												const indexInPlaylist = playlist.tracks.findIndex(
-													(t) => t.track_id === track.track_id
-												);
-												playTrack(formattedTrack, indexInPlaylist);
-											}}
-											class="play-btn"
-										>
-											▶️
-										</button>
-									</div>
-								{/each}
-							</div>
-						{/if}
+					<!-- 클릭 시 재생 대신 상세 페이지로 이동 -->
+					<div
+						class="playlist-item"
+						role="button"
+						tabindex="0"
+						on:click={() => goToPlaylistDetail(playlist)}
+						on:keydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								goToPlaylistDetail(playlist);
+							}
+						}}
+					>
+						<div class="playlist-thumbnail">
+							{#each [0, 1, 2, 3] as idx}
+								<div class="thumbnail-cell">
+									{#if playlist.tracks && playlist.tracks[idx]}
+										<img src={playlist.tracks[idx].album_image} alt="Album" />
+									{:else}
+										<img src="/default-album.png" alt="Default Album" />
+									{/if}
+								</div>
+							{/each}
+						</div>
+						<div class="playlist-name">{playlist.name}</div>
 					</div>
 				{/each}
 			</div>
@@ -140,89 +94,85 @@
 {/if}
 
 <style>
-	/* 기존 스타일 그대로 */
 	.playlist-manager-container {
-		max-width: 800px;
+		max-width: 1200px;
 		margin: 0 auto;
 		padding: 20px;
 	}
 	h2 {
 		text-align: center;
 		margin-bottom: 20px;
+		color: white;
 	}
-	.playlist-group {
-		margin-bottom: 20px;
-		border: 1px solid #ddd;
-		border-radius: 8px;
+	/* 5열 그리드 */
+	.playlist-grid {
+		display: grid;
+		grid-template-columns: repeat(5, 1fr);
+		gap: 30px;
+		justify-items: center;
+	}
+	.playlist-item {
+		padding: 10px;
+		cursor: pointer;
+		transition: transform 0.2s;
+		outline: none;
+	}
+	.playlist-item:hover {
+		transform: scale(1.05);
+	}
+	.playlist-thumbnail {
+		position: relative;
+		width: 200px;
+		padding-bottom: 200px;
+		display: grid;
+		grid-template-columns: 50% 50%;
+		grid-template-rows: 50% 50%;
+		gap: 1px;
+		background: none;
+	}
+	.thumbnail-cell {
+		position: absolute;
 		overflow: hidden;
 	}
-	.playlist-group-header {
+	.thumbnail-cell:nth-child(1) {
+		top: 0;
+		left: 0;
+		width: 50%;
+		height: 50%;
+	}
+	.thumbnail-cell:nth-child(2) {
+		top: 0;
+		left: 50%;
+		width: 50%;
+		height: 50%;
+	}
+	.thumbnail-cell:nth-child(3) {
+		top: 50%;
+		left: 0;
+		width: 50%;
+		height: 50%;
+	}
+	.thumbnail-cell:nth-child(4) {
+		top: 50%;
+		left: 50%;
+		width: 50%;
+		height: 50%;
+	}
+	.thumbnail-cell img {
 		width: 100%;
-		background-color: #1db954;
+		height: 100%;
+		object-fit: cover;
+	}
+	.playlist-name {
+		margin-top: 8px;
+		text-align: center;
 		color: white;
-		border: none;
-		padding: 12px;
-		font-size: 18px;
-		text-align: left;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		cursor: pointer;
-		transition: background-color 0.3s;
-	}
-	.playlist-group-header:hover {
-		background-color: #17a048;
-	}
-	.playlist-tracks {
-		background: #f9f9f9;
-		padding: 10px;
-	}
-	.track {
-		display: flex;
-		align-items: center;
-		padding: 8px 0;
-		border-bottom: 1px solid #eee;
-	}
-	.track:last-child {
-		border-bottom: none;
-	}
-	.track-album {
-		width: 50px;
-		height: 50px;
-		margin-right: 10px;
-		box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-	}
-
-	.track-info {
-		color: black;
-	}
-	.track-info strong {
-		display: block;
-		font-size: 16px;
-	}
-	.track-info p {
-		margin: 0;
-		font-size: 14px;
-		color: #666;
-	}
-	.play-btn {
-		margin-left: auto;
-		background-color: #1db954;
-		border: none;
-		color: white;
-		padding: 8px 12px;
-		font-size: 14px;
-		border-radius: 5px;
-		cursor: pointer;
-		transition: background 0.3s;
-	}
-	.play-btn:hover {
-		background-color: hotpink;
+		font-weight: bold;
 	}
 	.login-prompt {
 		text-align: center;
 		margin-top: 50px;
 		font-size: 1.5rem;
-		color: #666;
+		color: white;
 	}
 </style>

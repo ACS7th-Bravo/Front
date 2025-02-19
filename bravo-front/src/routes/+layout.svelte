@@ -616,7 +616,9 @@
 				{/if}
 			</div>
 		</div>
-		<slot />
+		<div class="content-container">
+			<slot />
+		</div>
 	</div>
 
 	{#if showPlaylist}
@@ -672,7 +674,7 @@
 					{#if selectedPlaylistId}
 						기존 리스트에 곡 추가
 					{:else}
-						플레이리스트 그룹 생성
+						플레이리스트 생성
 					{/if}
 				</button>
 				<button on:click={toggleCreatePlaylistGroup}>취소</button>
@@ -855,10 +857,16 @@
 		color: white;
 		display: flex;
 		flex-direction: column;
-		overflow: auto;
+		/* overflow: auto; */
 		padding-bottom: 70px;
 		position: relative; /* 추가: main-content 내의 절대 위치 요소 기준 */
 		z-index: 1;
+	}
+	/* 새로 추가된 콘텐츠 컨테이너에 스크롤 적용 */
+	.content-container {
+		flex-grow: 1;
+		overflow-y: auto;
+		/* 필요한 경우 패딩이나 마진 추가 */
 	}
 
 	.player {
@@ -1039,7 +1047,7 @@
 		padding-left: 20px;
 		padding-right: 20px;
 		overflow-y: auto;
-		margin-bottom: 50px;
+		margin-bottom: 70px;
 		z-index: 3;
 	}
 	.playlist h2 {
