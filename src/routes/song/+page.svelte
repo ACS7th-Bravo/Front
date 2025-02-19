@@ -4,22 +4,22 @@
 	import { getContext, onMount, tick, onDestroy } from 'svelte';
 	import { writable } from 'svelte/store';
 	import Lyrics from './lyrics/+page.svelte';
- 
+
 	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 	let currentTrack = getContext('currentTrack');
 	let showLyrics = getContext('lyricsExpanded');
- 
+
 	function toggleLyrics() {
 		showLyrics.update((n) => !n);
 	}
- 
+
 	let isBackgroundLoaded = writable(true);
 	let backgroundImage = writable($currentTrack.albumImage);
 	let previousBackgroundImage = writable($currentTrack.albumImage);
- 
+
 	$: {
 		if ($currentTrack.albumImage && $backgroundImage !== $currentTrack.albumImage) {
-			 fadeBackground();
+			fadeBackground();
 		}
 	}
 	async function fadeBackground() {
@@ -27,97 +27,97 @@
 		previousBackgroundImage.set($backgroundImage);
 		await tick();
 		setTimeout(() => {
-			 backgroundImage.set($currentTrack.albumImage);
-			 isBackgroundLoaded.set(true);
+			backgroundImage.set($currentTrack.albumImage);
+			isBackgroundLoaded.set(true);
 		}, 300);
 	}
- 
+
 	let headerScale = writable(1);
 	let headerTranslateY = writable(0);
 	const maxScroll = 150;
 	let songPage;
 	let headerContainer;
 	let lyricsComponent;
- 
+
 	// 부모에서 자식의 상태를 관리할 로컬 변수들
 	let childIsTranslating = false;
 	let childRefining = false;
- 
+
 	function handleUpdate(event) {
 		// 자식 컴포넌트에서 보내는 상태 업데이트 이벤트 수신
 		childIsTranslating = event.detail.isTranslating;
 		childRefining = event.detail.refining;
 	}
- 
+
 	function handleScroll() {
 		const scrollTop = songPage ? songPage.scrollTop : 0;
 		if (scrollTop < maxScroll) {
-			 const scale = 1 - (scrollTop / maxScroll) * 0.3;
-			 headerScale.set(scale);
-			 headerTranslateY.set(-scrollTop);
+			const scale = 1 - (scrollTop / maxScroll) * 0.3;
+			headerScale.set(scale);
+			headerTranslateY.set(-scrollTop);
 		} else {
-			 headerScale.set(0.5);
-			 headerTranslateY.set(-maxScroll);
+			headerScale.set(0.5);
+			headerTranslateY.set(-maxScroll);
 		}
 	}
- 
+
 	onMount(() => {
 		if (songPage) {
-			 songPage.addEventListener('scroll', handleScroll);
+			songPage.addEventListener('scroll', handleScroll);
 		}
 		return () => {
-			 if (songPage) songPage.removeEventListener('scroll', handleScroll);
+			if (songPage) songPage.removeEventListener('scroll', handleScroll);
 		};
 	});
- 
+
 	/* --- 추가된 부분: 번역 보정 인디케이터 애니메이션 --- */
 	let indicatorCycle = ['번역 보정 진행중.', '번역 보정 진행중..', '번역 보정 진행중...'];
 	let indicatorText = indicatorCycle[0];
 	let currentCycleIndex = 0;
 	let intervalId = null;
- 
+
 	$: {
 		if (childRefining) {
-			 if (!intervalId) {
-				 intervalId = setInterval(() => {
-					  currentCycleIndex = (currentCycleIndex + 1) % indicatorCycle.length;
-					  indicatorText = indicatorCycle[currentCycleIndex];
-				 }, 500);
-			 }
+			if (!intervalId) {
+				intervalId = setInterval(() => {
+					currentCycleIndex = (currentCycleIndex + 1) % indicatorCycle.length;
+					indicatorText = indicatorCycle[currentCycleIndex];
+				}, 500);
+			}
 		} else {
-			 if (intervalId) {
-				 clearInterval(intervalId);
-				 intervalId = null;
-				 indicatorText = indicatorCycle[0];
-			 }
+			if (intervalId) {
+				clearInterval(intervalId);
+				intervalId = null;
+				indicatorText = indicatorCycle[0];
+			}
 		}
 	}
- 
+
 	onDestroy(() => {
 		if (intervalId) clearInterval(intervalId);
 	});
 	/* --- 추가된 부분 끝 --- */
- </script>
- 
- <!-- Song 페이지 컨테이너 -->
- <div
+</script>
+
+<!-- Song 페이지 컨테이너 -->
+<div
 	class="song-page"
 	bind:this={songPage}
 	style="height: {$showLyrics ? 'auto' : '100vh'}; overflow: {$showLyrics ? 'auto' : 'hidden'};"
- >
+>
 	<!-- 배경 이미지 (페이드 아웃) -->
 	<div
 		class="background-image previous"
 		style="background-image: url({$previousBackgroundImage}); opacity: {$isBackgroundLoaded
-			 ? 0
-			 : 1};"
+			? 0
+			: 1};"
 	></div>
 	<!-- 배경 이미지 (페이드 인) -->
 	<div
 		class="background-image"
 		style="background-image: url({$backgroundImage}); opacity: {$isBackgroundLoaded ? 1 : 0};"
 	></div>
- 
+
 	<!-- 헤더 컨테이너 -->
 	<div
 		class="header-container"
@@ -127,47 +127,47 @@
 		<img src={$currentTrack.albumImage} alt="Album Cover" class="song-image" />
 		<h1 class="song-title">{$currentTrack.name}</h1>
 		<p class="song-artist">{$currentTrack.artist}</p>
- 
+
 		<!-- ===== [변경된 부분] =====
-			 버튼들을 그룹으로 묶고, 번역 인디케이터는 버튼 그룹 아래에 위치하도록 함
+				버튼들을 그룹으로 묶고, 번역 인디케이터는 버튼 그룹 아래에 위치하도록 함
 	 -->
 		<div class="button-group">
-			 <button class="lyrics-toggle" on:click={toggleLyrics}>
-				 {#if $showLyrics}
-					  ▲ 가사 접기
-				 {:else}
-					  ▼ 가사 보기
-				 {/if}
-			 </button>
-			 <button
-				 on:click={() => lyricsComponent.requestTranslation()}
-				 class="translate-button"
-				 disabled={childIsTranslating}
-			 >
-				 {#if childIsTranslating}
-					  번역 중...
-				 {:else}
-					  번역 요청
-				 {/if}
-			 </button>
+			<button class="lyrics-toggle" on:click={toggleLyrics}>
+				{#if $showLyrics}
+					▲ 가사 접기
+				{:else}
+					▼ 가사 보기
+				{/if}
+			</button>
+			<button
+				on:click={() => lyricsComponent.requestTranslation()}
+				class="translate-button"
+				disabled={childIsTranslating}
+			>
+				{#if childIsTranslating}
+					번역 중...
+				{:else}
+					번역 요청
+				{/if}
+			</button>
 		</div>
 		{#if childRefining}
-			 <div class="indicator-container">
-				 <span class="refining-indicator">{indicatorText}</span>
-			 </div>
+			<div class="indicator-container">
+				<span class="refining-indicator">{indicatorText}</span>
+			</div>
 		{/if}
 		<!-- ===== [변경된 부분 끝] ===== -->
 	</div>
- 
+
 	<!-- 가사 컴포넌트 -->
 	<div class="lyrics-wrapper {$showLyrics ? 'show' : ''}">
 		<Lyrics bind:this={lyricsComponent} on:update={handleUpdate} />
 	</div>
- </div>
- 
- <!-- /bravo-front/src/routes/song/+page.svelte -->
- 
- <style>
+</div>
+
+<!-- /bravo-front/src/routes/song/+page.svelte -->
+
+<style>
 	*::-webkit-scrollbar {
 		display: none;
 	}
@@ -283,10 +283,10 @@
 		max-height: 0;
 		overflow: hidden;
 		transition:
-			 max-height 0.5s ease-in-out,
-			 opacity 0.5s ease-in-out,
-			 padding 0.5s ease-in-out,
-			 margin 0.5s ease-in-out;
+			max-height 0.5s ease-in-out,
+			opacity 0.5s ease-in-out,
+			padding 0.5s ease-in-out,
+			margin 0.5s ease-in-out;
 		position: relative;
 		z-index: 5;
 	}
@@ -297,5 +297,4 @@
 		padding: 20px;
 		text-align: center;
 	}
- </style>
- 
+</style>
