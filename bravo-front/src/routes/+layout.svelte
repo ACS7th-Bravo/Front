@@ -502,6 +502,9 @@
 		selectedPlaylistId = '';
 	}
 
+	// [추가됨] 플레이리스트 그룹 생성 결과 메시지를 저장할 상태 변수
+	let playlistGroupMessage = '';
+
 	// 변경된 createPlaylistGroup 함수
 	function createPlaylistGroup() {
 		// 만약 기존 플레이리스트 선택(dropdown에서 선택됨)이 있다면, 기존 리스트에 곡 추가
@@ -511,6 +514,9 @@
 			addTracksToExistingPlaylist(selectedPlaylistId, $playlist);
 			newPlaylistGroupName = '';
 			showCreatePlaylistGroup = false;
+			// [추가됨] 에러 메시지 초기화
+			playlistGroupError = '';
+			playlistGroupSuccess = '플레이리스트에 곡이 추가되었습니다.';
 		} else {
 			// 기존처럼 새 플레이리스트 그룹 생성
 			if (newPlaylistGroupName.trim() !== '') {
@@ -536,7 +542,10 @@
 				})
 					.then((response) => {
 						if (!response.ok) {
-							throw new Error('플레이리스트 그룹 생성 실패');
+							// [변경됨] 에러 응답을 json으로 파싱 후 에러 메시지 던지기
+							return response.json().then((errData) => {
+								throw new Error(errData.error || '플레이리스트 그룹 생성 실패');
+							});
 						}
 						return response.json();
 					})
@@ -544,9 +553,12 @@
 						playlistManager.update((groups) => [...groups, savedGroup]);
 						newPlaylistGroupName = '';
 						showCreatePlaylistGroup = false;
+						playlistGroupMessage = '플레이리스트 그룹이 성공적으로 생성되었습니다.';
 					})
 					.catch((error) => {
 						console.error('Error creating playlist group:', error);
+						// [변경됨] 에러 메시지를 상태 변수에 저장
+						playlistGroupMessage = error.message;
 					});
 			}
 		}
@@ -611,8 +623,9 @@
 		<!-- 02.13 플레이리스트트 -->
 		<div class="playlist">
 			<h2>Playlist</h2>
+
 			{#if $playlist.length > 0}
-				<ul>
+				<ul class="playlist-add-group">
 					{#each $playlist as track, index}
 						<li class="playlist-track">
 							<img
@@ -632,7 +645,7 @@
 					{/each}
 				</ul>
 			{:else}
-				<p>플레이리스트가 비어 있습니다.</p>
+				<p class="empty">플레이리스트가 비어 있습니다.</p>
 			{/if}
 
 			<!-- 기존 플레이리스트 그룹 생성 UI 부분 -->
@@ -663,6 +676,12 @@
 					{/if}
 				</button>
 				<button on:click={toggleCreatePlaylistGroup}>취소</button>
+				<!-- [추가됨] 에러 메시지 표시 영역 -->
+				{#if playlistGroupMessage}
+					<div class="playlist-group-message">
+						{playlistGroupMessage}
+					</div>
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -1014,16 +1033,30 @@
 	/* ===== 플레이리스트 영역 스타일 ===== 02.13 플레이리스트트 */
 	.playlist {
 		width: 250px;
-		background: rgb(255, 70, 70);
+		max-width: 250px;
+		background: rgb(168, 209, 18);
 		color: black;
-		padding: 20px;
+		padding-left: 20px;
+		padding-right: 20px;
 		overflow-y: auto;
 		margin-bottom: 50px;
 		z-index: 3;
 	}
-
 	.playlist h2 {
 		position: fixed;
+		background: rgb(168, 209, 18);
+		width: 250px;
+		max-width: 250;
+		overflow: hidden;
+		margin-top: 0px;
+	}
+
+	.empty {
+		margin-top: 35px;
+	}
+
+	.playlist-add-group {
+		margin-top: 40px;
 	}
 
 	.playlist-track {
@@ -1058,6 +1091,11 @@
 		text-align: center;
 	}
 
+	.playlist-group-creation button:hover {
+		background-color: #6d6d6d;
+		color: white;
+	}
+
 	/* 버튼과 인풋이 실제 렌더링 될 때 적용되도록 :global 사용 */
 	.playlist-group-creation :global(button),
 	.playlist-group-creation :global(input) {
@@ -1075,5 +1113,11 @@
 		padding: 10px;
 		z-index: 2;
 		background-color: black;
+	}
+	.playlist-group-message {
+		margin-top: 0.5rem;
+		font-size: 14px;
+		/* 메시지 내용에 따라 색상을 동적으로 변경할 수 있습니다. 예: */
+		color: var(--playlist-group-message-color, green);
 	}
 </style>
