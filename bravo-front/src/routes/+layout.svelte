@@ -57,6 +57,10 @@
 	setContext('currentTime', currentTimeStore);
 	// ==========================
 
+	// [추가됨: 현재 재생 큐 저장 스토어]
+	let currentQueueStore = writable([]); // 재생할 트랙들의 배열 (검색 또는 플레이리스트에 따라 달라짐)
+	setContext('currentQueue', currentQueueStore); // 하위 페이지에서 사용 가능
+
 	// ✅ 프로그레스 바 관련 변수
 	let currentTime = 0;
 	let duration = 0;
@@ -246,7 +250,8 @@
 	// ✅ 다음 곡 자동 재생 함수
 	async function playNextTrack() {
 		console.log('⏭️ playNextTrack() 호출됨!'); // [수정됨]
-		const tracks = $searchResults;
+		const queue = get(currentQueueStore);
+		const tracks = queue.length ? queue : $searchResults;
 		console.log('🔍 현재 검색된 트랙 목록:', tracks);
 		console.log('🎵 현재 트랙 인덱스:', currentTrackIndex);
 		if (currentTrackIndex < tracks.length - 1) {
@@ -268,7 +273,8 @@
 				youtubePlayer.seekTo(0, true);
 			}
 		} else {
-			const tracks = $searchResults;
+			const queue = get(currentQueueStore);
+			const tracks = queue.length ? queue : $searchResults;
 			console.log('현재 트랙 인덱스:', currentTrackIndex);
 			if (currentTrackIndex > 0) {
 				const prevTrack = tracks[currentTrackIndex - 1];

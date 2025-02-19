@@ -14,6 +14,9 @@
 		userEmail = currentUser.email;
 	}
 
+	// [추가됨: 검색 페이지에서도 전역 재생 큐를 가져오기]
+	const currentQueue = getContext('currentQueue');
+
 	// .env 파일에 설정된 백엔드 URL을 사용합니다.
 	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -77,7 +80,36 @@
 				<div class="track-buttons">
 					<!-- 변경된 부분: addToPlaylist 함수 호출 -->
 					<button class="playlist-add-btn" on:click={() => addToPlaylist(track, index)}> + </button>
-					<button class="playlist-play-btn" on:click={() => playTrack(track, index)}>▶️ 재생</button
+					<!-- [변경됨: 검색 페이지 재생 버튼에서 전역 재생 큐 업데이트 추가] -->
+					<button
+						class="playlist-play-btn"
+						on:click={() => {
+							// [변경됨: 검색 결과 객체의 구조는 검색 API의 구조이므로,
+							// playTrack에서 요구하는 형식으로 변환]
+							const formattedTrack = {
+								...track,
+								// 검색 결과에서는 id, name, artists, imageUrl 등이 이미 있음
+								// 필요한 경우 영어 정보도 포함 (필요하다면)
+								englishTrackName: track.name,
+								englishArtistName: track.artists
+									? track.artists.map((a) => a.name).join(', ')
+									: track.artist,
+								source: 'search'
+							};
+							// [변경됨: 현재 재생 큐를 검색 결과 배열(포맷된 배열)로 업데이트]
+							currentQueue.set(
+								$searchResults.map((t) => ({
+									id: t.id,
+									name: t.name,
+									artist: t.artists ? t.artists.map((a) => a.name).join(', ') : t.artist,
+									imageUrl: t.album?.images[0]?.url || t.imageUrl,
+									englishTrackName: t.name,
+									englishArtistName: t.artists ? t.artists.map((a) => a.name).join(', ') : t.artist,
+									source: 'search'
+								}))
+							);
+							playTrack(formattedTrack, index);
+						}}>▶️ 재생</button
 					>
 				</div>
 			</div>
