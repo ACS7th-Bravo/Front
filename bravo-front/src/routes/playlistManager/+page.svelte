@@ -3,7 +3,7 @@
 <script>
 	import { onMount, getContext } from 'svelte';
 	import { playlistManager } from '$lib/playlistManagerStore.js';
-	import { getYouTubeVideo } from '$lib/trackPlayer.js';
+	import { playTrack, getYouTubeVideo } from '$lib/trackPlayer.js';
 
 	const currentUser = getContext('currentUser');
 	let userName = '';
@@ -22,30 +22,30 @@
 		expandedGroups[playlistId] = !expandedGroups[playlistId];
 	}
 
-	// 트랙 선택 시, 글로벌 플레이어에서 재생하도록 이벤트를 디스패치합니다.
-	async function selectTrack(track) {
-		// 변경된 부분: DB에 저장된 필드명을 사용합니다.
-		// 기존: const trackName = track.name || track.title;
-		// 변경:
-		const trackName = track.track_name; // DB에 저장된 필드
-		const artistName = track.artist_name; // DB에 저장된 필드
+	// // 트랙 선택 시, 글로벌 플레이어에서 재생하도록 이벤트를 디스패치합니다.
+	// async function selectTrack(track) {
+	// 	// 변경된 부분: DB에 저장된 필드명을 사용합니다.
+	// 	// 기존: const trackName = track.name || track.title;
+	// 	// 변경:
+	// 	const trackName = track.track_name; // DB에 저장된 필드
+	// 	const artistName = track.artist_name; // DB에 저장된 필드
 
-		let videoId = track.videoId;
-		if (!videoId && trackName && artistName) {
-			videoId = await getYouTubeVideo(trackName, artistName);
-		}
+	// 	let videoId = track.videoId;
+	// 	if (!videoId && trackName && artistName) {
+	// 		videoId = await getYouTubeVideo(trackName, artistName);
+	// 	}
 
-		// 플레이어가 기대하는 구조로 트랙 객체를 재구성합니다.
-		const formattedTrack = {
-			name: trackName,
-			artists: [{ name: artistName }],
-			album: { images: [{ url: track.album_image }] } // DB 필드: album_image
-		};
+	// 	// 플레이어가 기대하는 구조로 트랙 객체를 재구성합니다.
+	// 	const formattedTrack = {
+	// 		name: trackName,
+	// 		artists: [{ name: artistName }],
+	// 		album: { images: [{ url: track.album_image }] } // DB 필드: album_image
+	// 	};
 
-		window.dispatchEvent(
-			new CustomEvent('playTrack', { detail: { videoId, track: formattedTrack, index: 0 } })
-		);
-	}
+	// 	window.dispatchEvent(
+	// 		new CustomEvent('playTrack', { detail: { videoId, track: formattedTrack, index: 0 } })
+	// 	);
+	// }
 
 	onMount(async () => {
 		if (userEmail) {
@@ -106,7 +106,23 @@
 											<strong>{track.track_name}</strong>
 											<p>{track.artist_name}</p>
 										</div>
-										<button type="button" on:click={() => selectTrack(track)} class="play-btn">
+										<button
+											type="button"
+											on:click={() => {
+												// [변경됨: 트랙 정보 재구성]
+												const formattedTrack = {
+													...track,
+													id: track.track_id, // playTrack() 내부에서 track.id 사용
+													name: track.track_name, // playTrack() 내부에서 track.name 사용
+													artist: track.artist_name, // playTrack() 내부에서 track.artist 사용
+													imageUrl: track.album_image, // playTrack() 내부에서 track.imageUrl 사용
+													englishTrackName: track.track_name, // 필요한 경우 영어 정보 설정
+													englishArtistName: track.artist_name
+												};
+												playTrack(formattedTrack, 0);
+											}}
+											class="play-btn"
+										>
 											▶️
 										</button>
 									</div>

@@ -74,11 +74,12 @@
 						{track.artists?.map((artist) => artist.name).join(', ') || track.artist || '알 수 없음'}
 					</p>
 				</div>
-				<!-- 변경된 부분: addToPlaylist 함수 호출 -->
-				<button class="playlist-add-btn" on:click={() => addToPlaylist(track, index)}>
-					플레이리스트 추가
-				</button>
-				<button on:click={() => playTrack(track, index)}>▶️ 재생</button>
+				<div class="track-buttons">
+					<!-- 변경된 부분: addToPlaylist 함수 호출 -->
+					<button class="playlist-add-btn" on:click={() => addToPlaylist(track, index)}> + </button>
+					<button class="playlist-play-btn" on:click={() => playTrack(track, index)}>▶️ 재생</button
+					>
+				</div>
 			</div>
 		{/each}
 	</div>
@@ -160,7 +161,12 @@
 	.search-container button:hover {
 		background: palevioletred;
 	}
-	.track button {
+	.track-buttons {
+		margin-left: auto;
+		display: flex;
+		gap: 8px; /* 버튼 간 간격 */
+	}
+	.track .playlist-play-btn {
 		background: #1db954;
 		color: white;
 		border: none;
@@ -169,17 +175,18 @@
 		border-radius: 5px;
 		cursor: pointer;
 		transition: background 0.3s;
-		margin-left: auto;
-	}
-	.track button:hover {
-		background-color: hotpink;
 	}
 	/* 플레이리스트 추가 버튼에는 margin-left auto를 제거해 왼쪽에 위치시키고, 값 간격을 조정 */
 	.track .playlist-add-btn {
-		margin-left: auto;
-		margin-right: 8px;
+		border: none;
+		font-size: 40px;
+		font-weight: bold;
+		cursor: pointer;
+		background: none;
+		color: rgb(255, 255, 255);
+		-webkit-text-stroke: 1px #1db954; /* 글씨 테두리 */
 	}
-	.track .playlist-add-btn:hover {
-		background: hotpink;
+	.playlist-add-btn:hover {
+		color: hotpink;
 	}
 </style>
